@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dashboard{% endblock %} - Scheduler AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.4);
+            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+        .dark .glass-card {
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-sidebar {
+            background: rgba(255, 255, 255, 0.2);
+            -webkit-backdrop-filter: blur(15px);
+            backdrop-filter: blur(15px);
+            border-right: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .dark .glass-sidebar {
+             background: rgba(15, 23, 42, 0.5);
+             border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .bg-gradient-body {
+            background-color: #f3f4f6;
+            background-image: radial-gradient(at 0% 0%, rgb(243, 232, 255) 0px, transparent 50%),
+                              radial-gradient(at 98% 1%, rgb(233, 213, 255) 0px, transparent 50%);
+        }
+        .dark .bg-gradient-body {
+            background-color: #020617;
+            background-image: radial-gradient(at 2% 5%, rgb(30, 27, 44) 0px, transparent 50%),
+                              radial-gradient(at 98% 98%, rgb(20, 32, 53) 0px, transparent 50%);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 3px;}
+        .dark ::-webkit-scrollbar-thumb { background: #555; }
+    </style>
+</head>
+<body class="bg-gradient-body text-gray-800 dark:text-gray-200">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 flex-shrink-0 glass-sidebar">
+            <div class="flex items-center justify-center h-20">
+                <h1 class="text-2xl font-bold text-purple-700 dark:text-purple-400">Scheduler AI</h1>
+            </div>
+            <nav class="mt-4 px-4 space-y-2">
+                {% set nav_items = [
+                    ('dashboard', 'Dashboard', '<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />'),
+                    ('manage_courses', 'Courses', '<path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />'),
+                    ('manage_teachers', 'Teachers', '<path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-4.663M12 12A3.75 3.75 0 1012 4.5a3.75 3.75 0 000 7.5z" />'),
+                    ('manage_classrooms', 'Classrooms', '<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h6.75M9 11.25h6.75M9 15.75h6.75M9 20.25h6.75" />'),
+                    ('manage_student_groups', 'Student Groups', '<path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m-7.5-2.928A3 3 0 017.5 12.5m3 14.25v-2.545m0 0a3 3 0 01-3-3m3 3a3 3 0 00-3-3m-3.75 6.118a2.986 2.986 0 01-3.75 0M8.25 9.75A3.75 3.75 0 0112 6m3.75 3.75a3.75 3.75 0 01-7.5 0" />'),
+                    ('view_timetable', 'Timetable', '<path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0h18M12 12.75h.008v.008H12v-.008z" />'),
+                    ('analytics', 'Analytics', '<path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 100 15 7.5 7.5 0 000-15z" /><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />')
+                ] %}
+                {% for route, name, svg_path in nav_items %}
+                <a href="{{ url_for(route) }}" class="flex items-center px-4 py-2.5 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-purple-200/50 dark:hover:bg-purple-500/20 transition-colors duration-200">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">{{ svg_path | safe }}</svg>
+                    <span class="mx-3 font-medium">{{ name }}</span>
+                </a>
+                {% endfor %}
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <header class="flex items-center justify-between p-6 h-20">
+                <h2 class="text-2xl font-semibold text-gray-800 dark:text-white">{% block header %}{% endblock %}</h2>
+                <div class="flex items-center space-x-4">
+                     <button id="theme-toggle" type="button" class="p-2.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-purple-400">
+                        <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                        <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 5.05A1 1 0 003.636 6.464l.707.707a1 1 0 001.414-1.414l-.707-.707zM3 11a1 1 0 100-2H2a1 1 0 100 2h1zM6.464 16.364l-.707.707a1 1 0 001.414 1.414l.707-.707a1 1 0 00-1.414-1.414z"></path></svg>
+                    </button>
+                    <span class="text-gray-700 dark:text-gray-300 hidden sm:block">Welcome, {{ session.username }}</span>
+                    <a href="{{ url_for('logout') }}" class="text-sm font-medium text-purple-600 dark:text-purple-400 hover:underline">Logout</a>
+                </div>
+            </header>
+            <main class="flex-1 overflow-x-hidden overflow-y-auto p-6">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+<script>
+const themeToggleBtn = document.getElementById('theme-toggle');
+const darkIcon = document.getElementById('theme-toggle-dark-icon');
+const lightIcon = document.getElementById('theme-toggle-light-icon');
+const isDarkMode = () => localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+function toggleTheme(isDark) {
+    if (isDark) {
+        document.documentElement.classList.add('dark');
+        lightIcon.classList.remove('hidden');
+        darkIcon.classList.add('hidden');
+    } else {
+        document.documentElement.classList.remove('dark');
+        darkIcon.classList.remove('hidden');
+        lightIcon.classList.add('hidden');
+    }
+}
+
+toggleTheme(isDarkMode());
+
+themeToggleBtn.addEventListener('click', () => {
+    const wasDark = isDarkMode();
+    localStorage.setItem('color-theme', wasDark ? 'light' : 'dark');
+    toggleTheme(!wasDark);
+});
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
+

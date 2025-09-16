@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "macros.html" import form_field, form_submit, data_table %}
+
+{% block title %}Manage Student Groups{% endblock %}
+{% block header %}Student Group Management{% endblock %}
+
+{% block content %}
+<div class="container mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="lg:col-span-1 glass-card p-6 rounded-2xl shadow-lg h-fit">
+        <h3 class="text-xl font-semibold mb-6 text-gray-800 dark:text-white">Add New Group</h3>
+        <form method="POST" action="{{ url_for('manage_student_groups') }}" class="space-y-4">
+            {{ form_field('name', 'Group Name (e.g., CS Year 3, Section A)', 'text', required=True) }}
+            {{ form_submit('Add Group') }}
+        </form>
+    </div>
+    <div class="lg:col-span-2 glass-card p-6 rounded-2xl shadow-lg">
+        <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Existing Student Groups</h3>
+        {{ data_table(headers=['Group Name'], rows=groups, fields=['name']) }}
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block header %}Dashboard Overview{% endblock %}
+
+{% block content %}
+<div class="container mx-auto">
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {% set cards = [
+            ('Total Courses', total_courses, 'bg-blue-500'),
+            ('Total Teachers', total_teachers, 'bg-green-500'),
+            ('Total Classrooms', total_classrooms, 'bg-yellow-500'),
+            ('Student Groups', total_student_groups, 'bg-red-500')
+        ] %}
+        {% for title, value, color in cards %}
+        <div class="glass-card p-6 rounded-2xl shadow-lg">
+            <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300">{{ title }}</h3>
+            <p class="text-4xl font-bold text-gray-800 dark:text-white mt-2">{{ value }}</p>
+            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-4">
+                <div class="{{ color }} h-1.5 rounded-full" style="width: {{ (value % 10) * 10 + 10 }}%"></div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Actions -->
+    <div class="glass-card p-6 rounded-2xl shadow-lg">
+        <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Timetable Generation</h3>
+        <p class="text-gray-600 dark:text-gray-400 mb-4">Click the button to generate an optimized, conflict-free timetable using the Genetic Algorithm. This process may take a minute.</p>
+        <button id="generate-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 shadow-md">
+            Generate New Timetable
+        </button>
+        <p id="generation-status" class="mt-4 text-gray-600 dark:text-gray-400 font-medium"></p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('generate-btn').addEventListener('click', function() {
+    const statusEl = document.getElementById('generation-status');
+    const btn = this;
+    statusEl.textContent = '🧠 Initiating timetable generation... Please wait.';
+    btn.disabled = true;
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+    
+    fetch("{{ url_for('generate_timetable') }}", { method: 'POST' })
+    .then(response => response.json())
+    .then(data => {
+        if(data.message) {
+             statusEl.textContent = `✅ Success: ${data.message}`;
+        } else {
+            statusEl.textContent = `❌ Error: ${data.error || 'Unknown error occurred'}`;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        statusEl.textContent = '❌ An unexpected error occurred while contacting the server.';
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+    });
+});
+</script>
+{% endblock %}
+

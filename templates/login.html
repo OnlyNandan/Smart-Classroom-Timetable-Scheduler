@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Timetable Scheduler</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .fade-in { animation: fadeIn 0.6s ease-in-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.1);
+            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .dark .glass-card {
+            background: rgba(30, 41, 59, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .bg-gradient-body {
+            background-color: #f3f4f6;
+            background-image: radial-gradient(at 0% 0%, rgb(243, 232, 255) 0px, transparent 50%),
+                              radial-gradient(at 98% 1%, rgb(233, 213, 255) 0px, transparent 50%);
+        }
+        .dark .bg-gradient-body {
+            background-color: #020617;
+            background-image: radial-gradient(at 2% 5%, rgb(30, 27, 44) 0px, transparent 50%),
+                              radial-gradient(at 98% 98%, rgb(20, 32, 53) 0px, transparent 50%);
+        }
+    </style>
+</head>
+<body class="bg-gradient-body dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="w-full max-w-md p-8 space-y-6 glass-card rounded-2xl shadow-2xl fade-in">
+        <h1 class="text-3xl font-bold text-center text-gray-800 dark:text-white">Scheduler AI</h1>
+        <p class="text-center text-gray-600 dark:text-gray-400">Sign in to orchestrate your schedule</p>
+
+        {% if error %}
+            <div class="bg-red-500/20 border border-red-500/30 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg relative text-center" role="alert">
+                <span>{{ error }}</span>
+            </div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('login') }}" class="space-y-6">
+            <div>
+                <label for="username" class="text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
+                <input id="username" name="username" type="text" required class="mt-1 block w-full px-4 py-2.5 text-gray-900 dark:text-white bg-white/50 dark:bg-gray-900/50 border border-gray-300/50 dark:border-gray-600/50 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition">
+            </div>
+            <div>
+                <label for="password" class="text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
+                <input id="password" name="password" type="password" required class="mt-1 block w-full px-4 py-2.5 text-gray-900 dark:text-white bg-white/50 dark:bg-gray-900/50 border border-gray-300/50 dark:border-gray-600/50 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition">
+            </div>
+            <div>
+                <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 dark:focus:ring-offset-gray-800 transition-all duration-300 ease-in-out transform hover:scale-105">
+                    Sign In
+                </button>
+            </div>
+        </form>
+    </div>
+    <script>
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+</body>
+</html>
+
