@@ -10,10 +10,11 @@
     <div class="lg:col-span-1 glass-card p-6 rounded-2xl shadow-lg h-fit">
         <h3 class="text-xl font-semibold mb-6 text-gray-800 dark:text-white">Add New Course</h3>
         <form method="POST" action="{{ url_for('manage_courses') }}" class="space-y-4">
-            {{ form_field('name', 'Course Name', 'text', required=True) }}
-            {{ form_field('code', 'Course Code', 'text', required=True) }}
-            {{ form_field('credit_hours', 'Credit Hours', 'number', required=True) }}
-            {{ form_checkbox('lab_required', 'Lab Required') }}
+            {{ form_field('course_name', 'Course Name', 'text', required=True) }}
+            {{ form_field('course_id', 'Course Code', 'text', required=True) }}
+            {{ form_field('weekly_hours', 'Weekly Hours', 'number', required=True) }}
+            {{ form_checkbox('reqd_lab', 'Lab Required') }}
+            {{ form_field('lab_hours', 'Lab Hours', 'number') }}
             {{ form_submit('Add Course') }}
         </form>
     </div>
@@ -22,12 +23,11 @@
     <div class="lg:col-span-2 glass-card p-6 rounded-2xl shadow-lg">
         <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Existing Courses</h3>
         {{ data_table(
-            headers=['Name', 'Code', 'Credits', 'Lab'],
+            headers=['Name', 'Code', 'Weekly Hours', 'Lab Required', 'Lab Hours'],
             rows=courses,
-            fields=['name', 'code', 'credit_hours', 'lab_required'],
-            boolean_fields={'lab_required': ('Yes', 'No')}
+            fields=['course_name', 'course_id', 'weekly_hours', 'reqd_lab', 'lab_hours'],
+            boolean_fields={'reqd_lab': ('Yes', 'No')}
         ) }}
     </div>
 </div>
 {% endblock %}
-
