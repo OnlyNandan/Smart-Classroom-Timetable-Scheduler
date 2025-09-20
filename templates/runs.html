@@ -1,0 +1,8 @@
+<h2>Timetable Runs</h2>
+<ul>
+  {% for run in runs %}
+    <li>
+      Run {{ run.id }} - {{ run.created_at }} - <a href="{{ url_for('view_run', run_id=run.id) }}">View</a> - <a href="{{ url_for('export_run_xlsx', run_id=run.id) }}">Export</a>
+    </li>
+  {% endfor %}
+</ul>

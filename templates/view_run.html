@@ -1,0 +1,20 @@
+<h2>Run {{ run.id }} - {{ run.created_at }}</h2>
+{% if conflicts %}
+  <div style="background:#ffecec;padding:10px;">
+    <h4>Conflicts Detected</h4>
+    <ul>
+      {% for c in conflicts %}
+        <li>{{ c }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+<table>
+  <tr><th>Day</th><th>Slot</th><th>Course</th><th>Teacher</th><th>Room</th><th>Group</th></tr>
+  {% for e in entries %}
+    <tr>
+      <td>{{ e.day }}</td><td>{{ e.start_slot }} ({{ e.duration }})</td>
+      <td>{{ e.course_name }}</td><td>{{ e.teacher_name }}</td><td>{{ e.room_name }}</td><td>{{ e.group_name }}</td>
+    </tr>
+  {% endfor %}
+</table>
