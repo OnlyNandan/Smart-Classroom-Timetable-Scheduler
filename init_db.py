@@ -1,71 +1,166 @@
-from app import app, db, User, Course, Teacher, Classroom, StudentSection, TimetableEntry, hash_password
+# init_db.py
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime, date
+import json
 
-def create_initial_data():
-    """
-    Creates tables and populates them with initial master data.
-    Safe to run multiple times (idempotent).
-    """
-    with app.app_context():
-        print("Creating database tables...")
-        db.create_all()
+app = Flask(__name__)
+# Use env vars in production
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///scheduler_dev.db'  # change to MySQL URI in prod
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
 
-        # --- Create Users ---
-        if not User.query.filter_by(username='admin').first():
-            print("Creating default admin user...")
-            db.session.add(User(username='admin', password=hash_password('admin'), role='admin'))
+# -------------------------
+# Core Models
+# -------------------------
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(120), unique=True, nullable=False)
+    password = db.Column(db.String(256), nullable=False)  # store hashed
+    role = db.Column(db.String(20), nullable=False)  # admin / teacher / student
 
-        if not User.query.filter_by(username='teacher_jane').first():
-            print("Creating default teacher user...")
-            db.session.add(User(username='teacher_jane', password=hash_password('password'), role='teacher'))
+class Teacher(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False)
+    department = db.Column(db.String(100))
+    # workload
+    max_hours_per_day = db.Column(db.Integer, nullable=True)
+    max_hours_per_week = db.Column(db.Integer, nullable=True)
+    min_gap_between_classes = db.Column(db.Integer, nullable=True, default=0)
+    # contact
+    email = db.Column(db.String(200), nullable=True)
 
-        # --- Create Master Data ---
-        if Course.query.count() == 0:
-            print("Populating Courses...")
-            db.session.add_all([
-                Course(course_id="CSE301", course_name="Data Structures", weekly_hours=4, reqd_lab=True, lab_hours=2),
-                Course(course_id="CSE302", course_name="DBMS", weekly_hours=4, reqd_lab=True, lab_hours=2),
-                Course(course_id="CSE303", course_name="Computer Organization", weekly_hours=3, reqd_lab=False, lab_hours=0),
-                Course(course_id="CSE304", course_name="Operating Systems", weekly_hours=4, reqd_lab=True, lab_hours=2),
-                Course(course_id="MTH201", course_name="Discrete Mathematics", weekly_hours=3, reqd_lab=False, lab_hours=0),
-            ])
+class Student(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    roll_no = db.Column(db.String(50), nullable=False, unique=True)
+    name = db.Column(db.String(150), nullable=False)
+    year = db.Column(db.Integer, nullable=False)  # 1..4 etc.
+    branch = db.Column(db.String(100), nullable=True)
+    group_id = db.Column(db.Integer, db.ForeignKey('student_group.id'), nullable=True)
 
-        if Teacher.query.count() == 0:
-            print("Populating Teachers...")
-            db.session.add_all([
-                Teacher(teacher_id="T101", teacher_name="Dr. Ramesh Kumar", handling_subject="CSE301", max_hours_week=12),
-                Teacher(teacher_id="T102", teacher_name="Prof. Meena", handling_subject="CSE302", max_hours_week=12),
-                Teacher(teacher_id="T103", teacher_name="Dr. Ajay Nair", handling_subject="CSE303", max_hours_week=10),
-                Teacher(teacher_id="T104", teacher_name="Prof. Kavita Rao", handling_subject="CSE304", max_hours_week=12),
-                Teacher(teacher_id="T105", teacher_name="Dr. Sunil Verma", handling_subject="MTH201", max_hours_week=8),
-            ])
+class StudentGroup(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False, unique=True)  # e.g., CSE-2A
+    size = db.Column(db.Integer, nullable=True)
+    students = db.relationship('Student', backref='group', lazy=True)
 
-        if Classroom.query.count() == 0:
-            print("Populating Classrooms...")
-            db.session.add_all([
-                Classroom(room_id="R101", type="Classroom", capacity=60),
-                Classroom(room_id="R102", type="Classroom", capacity=60),
-                Classroom(room_id="LabC1", type="Lab", capacity=30),
-                Classroom(room_id="LabD2", type="Lab", capacity=30),
-            ])
+# Courses + electives
+class Course(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(50), nullable=False, unique=True)
+    name = db.Column(db.String(200), nullable=False)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=True)
+    # core / elective / priority
+    is_elective = db.Column(db.Boolean, default=False)
+    priority = db.Column(db.Integer, default=0)  # higher => more important
+    # room requirements
+    required_room_type = db.Column(db.String(50), nullable=True)  # 'lab'|'lecture'
+    required_capacity = db.Column(db.Integer, nullable=True)
+    required_features = db.Column(db.String(600), nullable=True)  # JSON list
+    duration = db.Column(db.Integer, default=1)  # contiguous slots needed
 
-        if StudentSection.query.count() == 0:
-            print("Populating Student Sections...")
-            db.session.add_all([
-                StudentSection(section_id="SEC3A", no_of_students=55, assigned_classroom="R101"),
-                StudentSection(section_id="SEC3B", no_of_students=50, assigned_classroom="R102"),
-            ])
-
-        # Clear any old timetable data
-        if TimetableEntry.query.count() > 0:
-            print("Clearing old timetable entries...")
-            db.session.query(TimetableEntry).delete()
-
+    def get_required_features(self):
         try:
-            db.session.commit()
-            print("✅ Database initialization complete.")
-        except Exception as e:
-            db.session.rollback()
-            print(f"❌ An error occurred: {e}")
+            return json.loads(self.required_features or "[]")
+        except:
+            return []
 
+# normalized room features (optional)
+class RoomFeature(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False, unique=True)
+
+class Room(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False, unique=True)
+    capacity = db.Column(db.Integer, nullable=False, default=30)
+    room_type = db.Column(db.String(50), nullable=False, default='lecture')
+    features = db.Column(db.String(600), nullable=True)  # JSON list of features
+
+    def get_features(self):
+        try:
+            return json.loads(self.features or "[]")
+        except:
+            return []
+
+# mapping which group attends which course (handles electives & cross-year)
+class CourseAssignment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=False)
+    group_id = db.Column(db.Integer, db.ForeignKey('student_group.id'), nullable=False)
+    # additional attrs: is_primary, seat_limit
+    seat_limit = db.Column(db.Integer, nullable=True)
+
+# Substitutions (teacher replacements)
+class Substitution(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    original_teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
+    substitute_teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    reason = db.Column(db.String(300), nullable=True)
+    approved = db.Column(db.Boolean, default=False)
+
+# Holidays & special days
+class Holiday(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, unique=True)
+    name = db.Column(db.String(200))
+
+# Attendance (basic)
+class Attendance(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    status = db.Column(db.String(20), nullable=False)  # present / absent / excused
+
+# Exam scheduling model
+class Exam(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=False)
+    room_id = db.Column(db.Integer, db.ForeignKey('room.id'), nullable=False)
+    group_id = db.Column(db.Integer, db.ForeignKey('student_group.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    start_slot = db.Column(db.Integer, nullable=False)
+    duration = db.Column(db.Integer, default=1)
+
+# Timetable runs & entries (versioning)
+class TimetableRun(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    notes = db.Column(db.String(300), nullable=True)
+
+class TimetableEntry(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    run_id = db.Column(db.Integer, db.ForeignKey('timetable_run.id'), nullable=True)
+    day = db.Column(db.String(10), nullable=False)
+    start_slot = db.Column(db.Integer, nullable=False)
+    duration = db.Column(db.Integer, default=1)
+    course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=False)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
+    room_id = db.Column(db.Integer, db.ForeignKey('room.id'), nullable=False)
+    group_id = db.Column(db.Integer, db.ForeignKey('student_group.id'), nullable=False)
+    # denormalized snapshot for history
+    course_name = db.Column(db.String(300))
+    teacher_name = db.Column(db.String(300))
+    room_name = db.Column(db.String(300))
+    group_name = db.Column(db.String(300))
+
+# Manual locks for drag-drop / manual edits
+class ManualLock(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    entry_id = db.Column(db.Integer, db.ForeignKey('timetable_entry.id'), unique=True)
+    locked_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    locked_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+# Config table for soft-constraint weights
+class ConstraintWeight(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), unique=True)
+    weight = db.Column(db.Float, default=1.0)
+
+# Quick helper to create DB
 if __name__ == '__main__':
-    create_initial_data()
+    with app.app_context():
+        db.create_all()
+        print("Created DB (sqlite dev) - switch to production DB URI before deploy.")
