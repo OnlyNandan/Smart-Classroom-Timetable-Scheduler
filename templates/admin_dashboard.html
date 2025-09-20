@@ -1,0 +1,12 @@
+<!-- show teacher constraints row -->
+{% for teacher in teachers %}
+  <div>
+    <strong>{{ teacher.name }}</strong>
+    <form method="post" action="{{ url_for('update_teacher_constraints', teacher_id=teacher.id) }}">
+      <input type="number" name="max_hours_per_day" placeholder="Max/day" value="{{ teacher.max_hours_per_day }}">
+      <input type="number" name="max_hours_per_week" placeholder="Max/week" value="{{ teacher.max_hours_per_week }}">
+      <input type="number" name="min_gap_between_classes" placeholder="Min gap" value="{{ teacher.min_gap_between_classes }}">
+      <button type="submit">Save</button>
+    </form>
+  </div>
+{% endfor %}
