@@ -4,12 +4,15 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text
+from dotenv import load_dotenv
 
 # App initialization
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
-
+load_dotenv()
 # Database configuration
+#set this in .env
+#database_url=mysql+pymysql://username:password@host:3306/database
 database_url = os.getenv('DATABASE_URL', '').strip()
 if not database_url:
     database_url = 'sqlite:///timetable.db'
