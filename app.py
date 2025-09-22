@@ -14,6 +14,8 @@ database_url = os.getenv('DATABASE_URL', '').strip()
 if not database_url:
     database_url = 'sqlite:///timetable.db'
 
+database_url="mysql+pymysql://root:secretpassword@localhost:3306/timetabledb"
+
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
