@@ -19,13 +19,15 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # --- Database Models ---
-from genetic_algorithm import run_genetic_algorithm
+# Import the new Ollama-based function
+from genetic_algorithm import run_ollama_generation
+
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(120), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default='teacher') 
+    role = db.Column(db.String(20), nullable=False, default='teacher')
 
     def __repr__(self):
         return f'<User {self.username}>'
@@ -33,7 +35,7 @@ class User(db.Model):
 
 # 1. Courses
 class Course(db.Model):
-    course_id = db.Column(db.String(20), primary_key=True)   # e.g., CSE301
+    course_id = db.Column(db.String(20), primary_key=True)  # e.g., CSE301
     course_name = db.Column(db.String(100), nullable=False)  # e.g., Data Structures
     weekly_hours = db.Column(db.Integer, nullable=False)
     reqd_lab = db.Column(db.Boolean, default=False)
@@ -84,23 +86,20 @@ class CourseTeacherMapping(db.Model):
     section = db.relationship('StudentSection', backref=db.backref('course_teacher_mappings', lazy=True))
 
 
-
-# Timetable Entry (uses StudentGroup)
 # Timetable Entry (now uses StudentSection)
 class TimetableEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    day = db.Column(db.String(10), nullable=False) 
-    time_slot = db.Column(db.String(20), nullable=False) 
+    day = db.Column(db.String(10), nullable=False)
+    time_slot = db.Column(db.String(20), nullable=False)
     course_id = db.Column(db.String(20), db.ForeignKey('course.course_id'), nullable=False)
     teacher_id = db.Column(db.String(20), db.ForeignKey('teacher.teacher_id'), nullable=False)
     classroom_id = db.Column(db.String(20), db.ForeignKey('classroom.room_id'), nullable=False)
-    section_id = db.Column(db.String(20), db.ForeignKey('student_section.section_id'), nullable=False)  # ✅ changed
+    section_id = db.Column(db.String(20), db.ForeignKey('student_section.section_id'), nullable=False)
 
     course = db.relationship('Course', backref=db.backref('timetable_entries', lazy=True))
     teacher = db.relationship('Teacher', backref=db.backref('timetable_entries', lazy=True))
     classroom = db.relationship('Classroom', backref=db.backref('timetable_entries', lazy=True))
-    section = db.relationship('StudentSection', backref=db.backref('timetable_entries', lazy=True))  # ✅ changed
-
+    section = db.relationship('StudentSection', backref=db.backref('timetable_entries', lazy=True))
 
     def __repr__(self):
         return f"<TimetableEntry {self.day} {self.time_slot} {self.course_id} {self.section_id}>"
@@ -151,12 +150,12 @@ def dashboard():
         total_teachers = Teacher.query.count()
         total_classrooms = Classroom.query.count()
         total_student_sections = StudentSection.query.count()
-        
-        return render_template('dashboard.html', 
-                                total_courses=total_courses,
-                                total_teachers=total_teachers,
-                                total_classrooms=total_classrooms,
-                                total_student_sections=total_student_sections)
+
+        return render_template('dashboard.html',
+                               total_courses=total_courses,
+                               total_teachers=total_teachers,
+                               total_classrooms=total_classrooms,
+                               total_student_sections=total_student_sections)
     else:
         teacher = Teacher.query.filter_by(teacher_name=session['username']).first()
         if not teacher:
@@ -190,20 +189,20 @@ def manage_courses():
         db.session.add(new_course)
         db.session.commit()
         return redirect(url_for('manage_courses'))
-    
+
     courses = Course.query.all()
     return render_template('courses.html', courses=courses)
 
 
 @app.route('/teachers', methods=['GET', 'POST'])
 def manage_teachers():
-    if not is_admin(): 
+    if not is_admin():
         return redirect(url_for('login'))
-    
+
     if request.method == 'POST':
         teacher_id = request.form['teacher_id']
         teacher_name = request.form['teacher_name']
-        handling_subject = request.form['handling_subject']   # course_id
+        handling_subject = request.form['handling_subject']  # course_id
         max_hours_week = int(request.form['max_hours_week'])
 
         new_teacher = Teacher(
@@ -215,19 +214,19 @@ def manage_teachers():
         db.session.add(new_teacher)
         db.session.commit()
         return redirect(url_for('manage_teachers'))
-    
+
     teachers = Teacher.query.all()
-    courses = Course.query.all()   # to populate subject dropdown
+    courses = Course.query.all()  # to populate subject dropdown
     return render_template('teachers.html', teachers=teachers, courses=courses)
 
 @app.route('/classrooms', methods=['GET', 'POST'])
 def manage_classrooms():
-    if not is_admin(): 
+    if not is_admin():
         return redirect(url_for('login'))
-    
+
     if request.method == 'POST':
         room_id = request.form['room_id']
-        room_type = request.form['type']   # "Classroom" / "Lab"
+        room_type = request.form['type']  # "Classroom" / "Lab"
         capacity = int(request.form['capacity'])
 
         new_classroom = Classroom(
@@ -238,15 +237,15 @@ def manage_classrooms():
         db.session.add(new_classroom)
         db.session.commit()
         return redirect(url_for('manage_classrooms'))
-    
+
     classrooms = Classroom.query.all()
     return render_template('classrooms.html', classrooms=classrooms)
 
 @app.route('/student_sections', methods=['GET', 'POST'])
 def manage_student_sections():
-    if not is_admin(): 
+    if not is_admin():
         return redirect(url_for('login'))
-    
+
     if request.method == 'POST':
         section_id = request.form['section_id']
         no_of_students = int(request.form['no_of_students'])
@@ -260,7 +259,7 @@ def manage_student_sections():
         db.session.add(new_section)
         db.session.commit()
         return redirect(url_for('manage_student_sections'))
-    
+
     sections = StudentSection.query.all()
     classrooms = Classroom.query.all()
     return render_template(
@@ -272,9 +271,9 @@ def manage_student_sections():
 
 @app.route('/course_teacher_mapping', methods=['GET', 'POST'])
 def manage_course_teacher_mapping():
-    if not is_admin(): 
+    if not is_admin():
         return redirect(url_for('login'))
-    
+
     if request.method == 'POST':
         course_id = request.form.get('course_id')
         teacher_id = request.form.get('teacher_id')
@@ -294,13 +293,12 @@ def manage_course_teacher_mapping():
         db.session.add(mapping)
         db.session.commit()
         return redirect(url_for('manage_course_teacher_mapping'))
-    
+
     mappings = CourseTeacherMapping.query.all()
     courses = Course.query.all()
     teachers = Teacher.query.all()
     sections = StudentSection.query.all()
     return render_template('course_teacher_mapping.html', mappings=mappings, courses=courses, teachers=teachers, sections=sections)
-
 
 
 # --- Timetable Generation ---
@@ -310,39 +308,36 @@ def generate_timetable():
         return jsonify({"error": "Unauthorized"}), 403
 
     try:
-        print("Starting timetable generation...")
+        print("Starting timetable generation with Ollama...")
         courses = Course.query.all()
         teachers = Teacher.query.all()
         classrooms = Classroom.query.all()
-
-        # Use StudentSection (or StudentGroup) depending on your model
-        # If your GA expects 'sections' then use StudentSection
         sections = StudentSection.query.all()
+        course_teacher_mappings = CourseTeacherMapping.query.all()
 
         days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-        time_slots = ["09:00-10:30", "10:30-12:00", "13:00-14:30", "14:30-16:00"]
+        time_slots = ["09:00-10:30", "10:30-12:00", "13:00-14:30", "14:30-16:00", "16:00-17:30"]
 
-        # Call GA using positional args (order must match the GA signature)
-        best_timetable_df = run_genetic_algorithm(
-            courses,        # 1st arg
-            teachers,       # 2nd arg
-            classrooms,     # 3rd arg (rooms)
-            StudentSection.query.all(),       # 4th arg (sections)
-            days,           # 5th arg
-            time_slots,     # 6th arg
-            population_size=100,
-            generations=50,
-            mutation_rate=0.05
+        # Call the new Ollama-based generation function
+        # You can change the model here to 'deepseek-coder:33b' if you prefer
+        best_timetable_df = run_ollama_generation(
+            courses=courses,
+            teachers=teachers,
+            rooms=classrooms,
+            sections=sections,
+            course_teacher_mappings=course_teacher_mappings,
+            days=days,
+            time_slots=time_slots,
+            model='mixtral:8x7b'
         )
 
         if best_timetable_df is None or best_timetable_df.empty:
-            return jsonify({"error": "Could not generate a valid timetable. Check constraints."}), 500
+            return jsonify({"error": "Ollama could not generate a valid timetable. Check the model's response or your constraints."}), 500
 
         print("Saving generated timetable to the database...")
         db.session.query(TimetableEntry).delete()
 
-        # Adjust column names in row indexing below to match what your GA returns:
-        # expected columns: day, time_slot, course_id, teacher_id, room_id, section_id
+        # The DataFrame column names should match the JSON keys from the prompt
         for index, row in best_timetable_df.iterrows():
             entry = TimetableEntry(
                 day=row['day'],
@@ -350,20 +345,18 @@ def generate_timetable():
                 course_id=row['course_id'],
                 teacher_id=row['teacher_id'],
                 classroom_id=row['room_id'],
-                section_id=row['section_id']   # ✅ use section_id
+                section_id=row['section_id']
             )
             db.session.add(entry)
 
         db.session.commit()
         print("Timetable saved successfully.")
-        return jsonify({"message": f"Timetable generated and saved successfully! {len(best_timetable_df)} classes scheduled."})
+        return jsonify({"message": f"Timetable generated with Ollama and saved! {len(best_timetable_df)} classes scheduled."})
 
     except Exception as e:
         db.session.rollback()
-        print(f"Error during timetable generation: {e}")
+        print(f"Error during Ollama timetable generation: {e}")
         return jsonify({"error": str(e)}), 500
-
-
 
 
 @app.route('/timetable')
@@ -388,11 +381,10 @@ def view_timetable():
                 "course": entry.course.course_name,
                 "teacher": entry.teacher.teacher_name,
                 "room": entry.classroom.room_id,
-                "section": entry.section.section_id   # ✅ use section instead of group
+                "section": entry.section.section_id
             })
 
     return render_template('timetable.html', timetable_grid=timetable_grid, days=days, time_slots=time_slots)
-
 
 
 @app.route('/analytics')
