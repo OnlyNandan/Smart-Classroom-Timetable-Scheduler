@@ -1,4 +1,3 @@
-# app.py
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file
 from init_db import (db, User, Teacher, Student, StudentGroup, Course, Room, CourseAssignment,
                      Holiday, Attendance, Substitution, TimetableRun, TimetableEntry, ManualLock)
@@ -10,6 +9,24 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = "dev-secret"  # use env var in prod
 
+#Db config
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:secretpassword@localhost:3306/timetabledb'  #conf with username:password@host:port/databasename
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db.init_app(app)
+
+with app.app_context():
+    db.create_all()
+    admin_user = User.query.filter_by(username="admin").first()
+    if not admin_user:
+        admin_user = User(
+            username="admin",
+            password=generate_password_hash("admin"),
+            role="admin"
+        )
+        db.session.add(admin_user)
+        db.session.commit()
 # -------------------------
 # Auth helpers (very minimal)
 # -------------------------
@@ -273,4 +290,4 @@ def run_conflicts(run_id):
     return jsonify({"violations": violations})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, ssl_context='adhoc')
