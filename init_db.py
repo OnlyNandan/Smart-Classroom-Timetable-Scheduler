@@ -6,7 +6,7 @@ import json
 
 app = Flask(__name__)
 # Use env vars in production
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///scheduler_dev.db'  # change to MySQL URI in prod
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:secretpassword@localhost:3306/timetabledb'  #conf with username:password@host:port/databasename
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
