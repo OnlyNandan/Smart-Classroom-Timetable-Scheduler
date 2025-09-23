@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Electives{% endblock %}
+
+{% block header %}
+<div class="flex-grow">
+    <h2 class="text-2xl font-bold text-white">Manage Electives</h2>
+    <p class="text-sm text-gray-400">Control the elective selection process and view student choices.</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="app" class="space-y-6">
+    <!-- Actions -->
+    <div class="bg-slate-900/50 p-4 rounded-xl flex justify-between items-center">
+        <div v-if="appMode === 'school'">
+            <h3 class="text-lg font-semibold text-white">Elective Selection Window</h3>
+            <p class="text-sm text-gray-400">Current Status: 
+                <span :class="status === 'open' ? 'text-green-400' : 'text-red-400'" class="font-bold uppercase">${ status }</span>
+            </p>
+        </div>
+        <div v-else>
+             <h3 class="text-lg font-semibold text-white">Electives Not Applicable</h3>
+            <p class="text-sm text-gray-400">This feature is available for 'School' mode only.</p>
+        </div>
+        <button v-if="appMode === 'school'" @click="toggleStatus" class="btn-primary" :class="status === 'open' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'">
+            ${ status === 'open' ? 'Close Selection' : 'Open Selection' }
+        </button>
+    </div>
+
+    <div v-if="appMode === 'school'">
+        <!-- Electives Overview -->
+        <div class="glass-card rounded-xl p-5">
+            <h3 class="text-xl font-bold text-white mb-4">Electives Summary</h3>
+            <div v-if="electives.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div v-for="elective in electives" :key="elective.id" class="bg-gray-800/50 p-4 rounded-lg">
+                    <p class="font-semibold text-gray-200">${ elective.name } (${ elective.code })</p>
+                    <p class="text-2xl font-bold text-purple-400">${ elective.student_count } <span class="text-base font-normal text-gray-400">students</span></p>
+                </div>
+            </div>
+             <p v-else class="text-center text-gray-500 py-4">No elective subjects have been created yet.</p>
+        </div>
+
+        <!-- Student Choices -->
+        <div class="glass-card rounded-xl p-5">
+            <h3 class="text-xl font-bold text-white mb-4">Student Choices</h3>
+             <div v-if="students.length > 0" class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-400">
+                    <thead class="text-xs text-gray-300 uppercase bg-gray-800/60">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Student Name</th>
+                            <th scope="col" class="px-6 py-3">Username</th>
+                            <th scope="col" class="px-6 py-3">Selected Electives</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="student in students" :key="student.id" class="border-b border-gray-700 hover:bg-slate-800/40">
+                            <td class="px-6 py-4 font-medium text-white">${ student.full_name }</td>
+                            <td class="px-6 py-4">${ student.username }</td>
+                            <td class="px-6 py-4">
+                                <span v-if="student.electives.length > 0" class="flex flex-wrap gap-2">
+                                     <span v-for="elective in student.electives" :key="elective.id" class="px-2 py-1 text-xs font-medium text-purple-200 bg-purple-600/30 rounded-full">
+                                        ${ elective.name }
+                                     </span>
+                                </span>
+                                <span v-else class="text-gray-500">None</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+             <p v-else class="text-center text-gray-500 py-4">No students found.</p>
+        </div>
+    </div>
+</div>
+
+<style>
+.btn-primary { @apply px-4 py-2 font-semibold text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition disabled:bg-gray-600 disabled:cursor-not-allowed; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/vue@3.2.47/dist/vue.global.prod.js"></script>
+<script>
+const { createApp, ref, onMounted } = Vue;
+
+createApp({
+    setup() {
+        const status = ref('closed');
+        const electives = ref([]);
+        const students = ref([]);
+        const appMode = '{{ g.app_mode }}';
+
+        const fetchData = async () => {
+            if (appMode !== 'school') return;
+            try {
+                const statusRes = await fetch("{{ url_for('handle_elective_status') }}");
+                const statusData = await statusRes.json();
+                status.value = statusData.status;
+
+                const dataRes = await fetch("{{ url_for('get_electives_data') }}");
+                const data = await dataRes.json();
+                electives.value = data.electives;
+                students.value = data.students;
+            } catch (error) {
+                console.error("Failed to fetch electives data:", error);
+            }
+        };
+
+        const toggleStatus = async () => {
+            const newStatus = status.value === 'open' ? 'closed' : 'open';
+            try {
+                const response = await fetch("{{ url_for('handle_elective_status') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                if (!response.ok) throw new Error('Failed to update status');
+                status.value = newStatus;
+            } catch (error) {
+                console.error("Error toggling status:", error);
+            }
+        };
+
+        onMounted(fetchData);
+
+        return { status, electives, students, appMode, toggleStatus };
+    },
+    compilerOptions: { delimiters: ['${', '}'] }
+}).mount('#app');
+</script>
+{% endblock %}

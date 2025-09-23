@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+
+{% block title %}Manage {{ 'Sections' if g.app_mode == 'school' else 'Batches' }} & Students{% endblock %}
+
+{% block header %}
+<div class="flex-grow">
+    <h2 class="text-2xl font-bold text-white">Manage {{ 'Sections' if g.app_mode == 'school' else 'Batches' }} & Students</h2>
+    <p class="text-sm text-gray-400">Organize student groups and manage enrollments efficiently.</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="app" class="space-y-6">
+    <!-- Filters and Main Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end bg-slate-900/50 p-4 rounded-xl">
+        <div class="flex flex-wrap sm:flex-nowrap gap-x-4 gap-y-2">
+            <div>
+                <label class="label">{{ 'Group' if g.app_mode == 'school' else 'Semester' }}</label>
+                <select v-model="filters.primary" @change="fetchSecondary" class="input-base w-full">
+                    <option disabled value="">Select...</option>
+                    <option v-for="item in primaryFilterData" :key="item.id" :value="item.id">${ item.name }</option>
+                </select>
+            </div>
+            <div>
+                <label class="label">{{ 'Grade' if g.app_mode == 'school' else 'Department' }}</label>
+                <select v-model="filters.secondary" @change="fetchSections" class="input-base w-full" :disabled="!filters.primary">
+                    <option disabled value="">Select...</option>
+                    <option v-for="item in secondaryFilterData" :key="item.id" :value="item.id">${ item.name }</option>
+                </select>
+            </div>
+        </div>
+        <div class="flex justify-start md:justify-end">
+            <button @click="openSectionModal()" class="btn-primary" :disabled="!filters.secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                Add {{ 'Section' if g.app_mode == 'school' else 'Batch' }}
+            </button>
+        </div>
+    </div>
+    
+    <!-- Main Content Area -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" v-if="filters.secondary">
+        <!-- Left Panel: Sections List -->
+        <div class="lg:col-span-1 flex flex-col gap-y-3">
+            <div v-for="section in sections" :key="section.id" @click="selectedSection = section"
+                class="glass-card p-4 rounded-lg cursor-pointer transition-all duration-200"
+                :class="{ 'ring-2 ring-purple-500 bg-slate-700/50': selectedSection && selectedSection.id === section.id, 'hover:bg-slate-800/50': !selectedSection || selectedSection.id !== section.id }">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-semibold text-white">${ section.name }</h3>
+                    <span class="text-sm font-mono px-2 py-1 bg-gray-900/50 rounded-md text-cyan-400">${ section.students.length } / ${ section.capacity }</span>
+                </div>
+            </div>
+            <p v-if="sections.length === 0" class="text-center text-gray-500 py-8">No {{ 'sections' if g.app_mode == 'school' else 'batches' }} found. Add one to get started.</p>
+        </div>
+
+        <!-- Right Panel: Students and Actions -->
+        <div class="lg:col-span-2 space-y-6">
+            <div v-if="selectedSection" class="glass-card rounded-xl p-5">
+                <div class="flex flex-wrap gap-y-2 justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-white">Students in ${ selectedSection.name }</h3>
+                    <div class="flex items-center gap-x-2">
+                         <button @click="openStudentModal()" class="btn-secondary text-sm">Add Student</button>
+                         <button @click="openSectionModal(selectedSection)" class="text-purple-400 hover:text-purple-300 p-1 ml-2">Edit</button>
+                         <button @click="deleteSection(selectedSection)" class="text-red-500 hover:text-red-400 p-1">Delete</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto max-h-96">
+                    <table class="w-full text-sm text-left text-gray-400">
+                        <thead class="text-xs text-gray-300 uppercase bg-gray-800/60 sticky top-0">
+                            <tr>
+                                <th class="px-6 py-3">Full Name</th>
+                                <th class="px-6 py-3">Username</th>
+                                <th class="px-6 py-3">Email</th>
+                                <th class="px-6 py-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-if="selectedSection.students.length === 0"><td colspan="4" class="text-center py-6 text-gray-500">No students assigned to this section.</td></tr>
+                            <tr v-for="student in selectedSection.students" :key="student.id" class="border-b border-gray-700 hover:bg-slate-800/40">
+                                <td class="px-6 py-4 font-medium text-white">${ student.full_name }</td>
+                                <td class="px-6 py-4">${ student.user.username }</td>
+                                <td class="px-6 py-4">${ student.user.email || 'N/A' }</td>
+                                <td class="px-6 py-4 text-right">
+                                    <button @click="openStudentModal(student, selectedSection.id)" class="text-purple-400 hover:text-purple-300 p-1 text-xs">Edit</button>
+                                    <button @click="deleteStudent(student)" class="text-red-500 hover:text-red-400 p-1 text-xs">Delete</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Bulk Import Card -->
+            <div class="glass-card rounded-xl p-5">
+                 <h3 class="text-xl font-bold text-white mb-2">Bulk Import Students</h3>
+                 <p class="text-sm text-gray-400 mb-4">Quickly add multiple students using a CSV file. Accounts will be created automatically.</p>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center bg-gray-900/40 p-4 rounded-lg">
+                    <div class="space-y-2">
+                        <a href="{{ url_for('download_csv_template') }}" class="btn-secondary w-full text-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                            Download CSV Template
+                        </a>
+                        <p class="text-xs text-center text-gray-500">Columns: full_name, section_name, email (optional)</p>
+                    </div>
+                    <div>
+                        <input type="file" @change="handleFileUpload" id="csv-upload" class="hidden" accept=".csv">
+                        <label for="csv-upload" class="btn-secondary w-full text-center cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 13H11V9.414l-1.293 1.293a1 1 0 01-1.414-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L13 9.414V13H5.5z" /><path d="M9 13h2v5a1 1 0 11-2 0v-5z" /></svg>
+                            <span v-if="!modals.upload.file">Choose File...</span>
+                            <span v-else class="truncate max-w-xs">${ modals.upload.file.name }</span>
+                        </label>
+                        <button @click="uploadFile" class="btn-primary bg-green-600 hover:bg-green-700 w-full mt-2" :disabled="!modals.upload.file || isSaving">${ isSaving ? 'Uploading...' : 'Upload & Import' }</button>
+                    </div>
+                 </div>
+                 <div v-if="modals.upload.error" class="text-red-400 text-sm mt-2 p-2 bg-red-900/30 rounded">${ modals.upload.error }</div>
+                 <div v-if="modals.upload.success" class="text-green-400 text-sm mt-2 p-2 bg-green-900/30 rounded">${ modals.upload.success }</div>
+            </div>
+        </div>
+    </div>
+    
+     <div v-else class="text-center py-12 text-gray-500">
+        <svg class="mx-auto h-12 w-12 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
+        <h3 class="mt-2 text-sm font-semibold text-gray-300">No Group Selected</h3>
+        <p class="mt-1 text-sm text-gray-500">Please select a {{ 'Group & Grade' if g.app_mode == 'school' else 'Semester & Department' }} to see the {{ 'sections' if g.app_mode == 'school' else 'batches' }}.</p>
+    </div>
+
+    <!-- Section Modal -->
+    <div v-if="modals.section.show" class="modal-backdrop" @click.self="closeSectionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>${ modals.section.isEdit ? 'Edit' : 'Add' } {{ 'Section' if g.app_mode == 'school' else 'Batch' }}</h3>
+                <button @click="closeSectionModal">&times;</button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div><label class="label">Name</label><input type="text" v-model="modals.section.data.name" class="input-base w-full" placeholder="e.g., Section A"></div>
+                <div><label class="label">Capacity</label><input type="number" v-model.number="modals.section.data.capacity" class="input-base w-full"></div>
+                <div class="text-red-400 text-sm" v-if="modals.section.error">${ modals.section.error }</div>
+            </div>
+            <div class="modal-footer"><button @click="closeSectionModal" class="btn-secondary">Cancel</button><button @click="saveSection" class="btn-primary" :disabled="isSaving">${ isSaving ? 'Saving...' : 'Save' }</button></div>
+        </div>
+    </div>
+    
+    <!-- Student Modal -->
+    <div v-if="modals.student.show" class="modal-backdrop" @click.self="closeStudentModal">
+         <div class="modal-content">
+            <div class="modal-header"><h3>${ modals.student.isEdit ? 'Edit' : 'Add' } Student</h3><button @click="closeStudentModal">&times;</button></div>
+            <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="sm:col-span-2"><label class="label">Full Name</label><input type="text" v-model="modals.student.data.full_name" class="input-base w-full"></div>
+                <div class="sm:col-span-2"><label class="label">{{ 'Section' if g.app_mode == 'school' else 'Batch' }}</label><select v-model="modals.student.data.section_id" class="input-base w-full"><option v-for="section in sections" :value="section.id">${ section.name }</option></select></div>
+                <div><label class="label">Username</label><input type="text" v-model="modals.student.data.username" class="input-base w-full"></div>
+                <div><label class="label">Email (Optional)</label><input type="email" v-model="modals.student.data.email" class="input-base w-full"></div>
+                <div class="sm:col-span-2"><label class="label">Password ${ modals.student.isEdit ? '(Leave blank to keep unchanged)' : '' }</label><input type="password" v-model="modals.student.data.password" class="input-base w-full"></div>
+                <div class="text-red-400 text-sm sm:col-span-2" v-if="modals.student.error">${ modals.student.error }</div>
+            </div>
+            <div class="modal-footer"><button @click="closeStudentModal" class="btn-secondary">Cancel</button><button @click="saveStudent" class="btn-primary" :disabled="isSaving">${ isSaving ? 'Saving...' : 'Save' }</button></div>
+        </div>
+    </div>
+
+</div>
+
+<style>
+.label { @apply block mb-1 text-sm font-medium text-gray-400; }
+.btn-primary { @apply inline-flex items-center justify-center px-4 py-2 font-semibold text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition disabled:bg-gray-600 disabled:cursor-not-allowed shadow-lg shadow-purple-900/40; }
+.btn-secondary { @apply inline-flex items-center justify-center px-4 py-2 font-semibold text-white bg-gray-600 rounded-lg hover:bg-gray-700 transition disabled:bg-gray-500 disabled:cursor-not-allowed; }
+.input-base { @apply block w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-900; }
+.modal-backdrop { @apply fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm; }
+.modal-content { @apply bg-gray-900 border border-gray-700 rounded-2xl shadow-xl w-full max-w-lg mx-4; }
+.modal-header { @apply flex items-center justify-between p-5 border-b border-gray-700; }
+.modal-header h3 { @apply text-xl font-semibold text-white; }
+.modal-header button { @apply text-gray-400 hover:text-white text-2xl; }
+.modal-footer { @apply flex items-center justify-end p-5 border-t border-gray-700 rounded-b-xl space-x-3; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/vue@3.2.47/dist/vue.global.prod.js"></script>
+<script>
+const { createApp, ref, reactive, onMounted, watch } = Vue;
+
+createApp({
+    setup() {
+        const primaryFilterData = ref([]);
+        const secondaryFilterData = ref([]);
+        const sections = ref([]);
+        const isSaving = ref(false);
+        const selectedSection = ref(null);
+
+        const filters = reactive({ primary: '', secondary: '' });
+        const modals = reactive({
+            section: { show: false, isEdit: false, data: {}, error: '' },
+            student: { show: false, isEdit: false, data: {}, error: '' },
+            upload: { show: false, file: null, error: '', success: '' }
+        });
+
+        const appMode = '{{ g.app_mode }}';
+        
+        watch(() => filters.primary, () => { selectedSection.value = null; sections.value = []; });
+        watch(() => filters.secondary, () => { selectedSection.value = null; sections.value = []; });
+
+        const fetchPrimary = async () => {
+            const url = appMode === 'school' ? "{{ url_for('get_structure_items', mode='school') }}" : "{{ url_for('get_structure_items', mode='college') }}";
+            const res = await fetch(url);
+            primaryFilterData.value = (await res.json()).items;
+        };
+
+        const fetchSecondary = () => {
+            filters.secondary = '';
+            const primary = primaryFilterData.value.find(p => p.id === filters.primary);
+            if (!primary) { secondaryFilterData.value = []; return; }
+            secondaryFilterData.value = (appMode === 'school') ? primary.grades : primary.departments;
+        };
+
+        const fetchSections = async () => {
+            if (!filters.secondary) return;
+            try {
+                const res = await fetch(`{{ url_for('handle_sections') }}?parent_id=${filters.secondary}`);
+                const data = await res.json();
+                sections.value = data.sections;
+                if (data.sections.length > 0) {
+                    selectedSection.value = data.sections[0];
+                }
+            } catch (error) { console.error(error); }
+        };
+
+        const openSectionModal = (section = null) => {
+            modals.section.error = '';
+            modals.section.isEdit = !!section;
+            modals.section.data = section ? { ...section } : { name: '', capacity: 30 };
+            modals.section.show = true;
+        };
+        const closeSectionModal = () => modals.section.show = false;
+
+        const saveSection = async () => {
+            isSaving.value = true;
+            modals.section.error = '';
+            const parentIdKey = appMode === 'school' ? 'grade_id' : 'department_id';
+            modals.section.data[parentIdKey] = filters.secondary;
+            const url = modals.section.isEdit ? `/api/sections/${modals.section.data.id}` : "/api/sections";
+            const method = modals.section.isEdit ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(modals.section.data) });
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.message);
+                await fetchSections();
+                closeSectionModal();
+            } catch(e) { modals.section.error = e.message; } finally { isSaving.value = false; }
+        };
+
+        const deleteSection = async (section) => {
+            if (!confirm(`Delete '${section.name}'? This will also unassign all its students.`)) return;
+            await fetch(`/api/sections/${section.id}`, { method: 'DELETE' });
+            selectedSection.value = null;
+            await fetchSections();
+        };
+        
+        const openStudentModal = (student = null) => {
+            modals.student.error = '';
+            modals.student.isEdit = !!student;
+            if (student) {
+                modals.student.data = { ...student, username: student.user.username, email: student.user.email, password: '' };
+            } else {
+                modals.student.data = { full_name: '', username: '', email: '', password: '', section_id: selectedSection.value?.id };
+            }
+            modals.student.show = true;
+        };
+        const closeStudentModal = () => modals.student.show = false;
+
+        const saveStudent = async () => {
+            isSaving.value = true;
+            modals.student.error = '';
+            const url = modals.student.isEdit ? `/api/students/${modals.student.data.id}` : "/api/students";
+            const method = modals.student.isEdit ? 'PUT' : 'POST';
+            
+            try {
+                const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(modals.student.data) });
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.message);
+                await fetchSections();
+                closeStudentModal();
+            } catch(e) { modals.student.error = e.message; } finally { isSaving.value = false; }
+        };
+
+        const deleteStudent = async (student) => {
+            if (!confirm(`Delete student '${student.full_name}'?`)) return;
+            await fetch(`/api/students/${student.id}`, { method: 'DELETE' });
+            await fetchSections();
+        };
+
+        const handleFileUpload = (event) => {
+            modals.upload.file = event.target.files[0];
+            modals.upload.error = '';
+            modals.upload.success = '';
+        };
+
+        const uploadFile = async () => {
+            if (!filters.secondary) {
+                modals.upload.error = "Please select a Grade/Department first.";
+                return;
+            }
+            isSaving.value = true;
+            modals.upload.error = '';
+            modals.upload.success = '';
+            const formData = new FormData();
+            formData.append('file', modals.upload.file);
+            formData.append('parent_id', filters.secondary);
+
+            try {
+                const res = await fetch("{{ url_for('bulk_upload_students') }}", { method: 'POST', body: formData });
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.message);
+                modals.upload.success = result.message;
+                await fetchSections();
+            } catch(e) { modals.upload.error = e.message; } finally { isSaving.value = false; }
+        };
+
+        onMounted(fetchPrimary);
+
+        return { filters, primaryFilterData, secondaryFilterData, sections, isSaving, modals, selectedSection,
+            fetchSecondary, fetchSections, openSectionModal, closeSectionModal, saveSection, deleteSection,
+            openStudentModal, closeStudentModal, saveStudent, deleteStudent, handleFileUpload, uploadFile };
+    },
+    compilerOptions: { delimiters: ['${', '}'] }
+}).mount('#app');
+</script>
+{% endblock %}
+

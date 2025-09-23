@@ -3,3 +3,4 @@ Flask-SQLAlchemy
 PyMySQL
 pandas
 python-dotenv
+openpyxl
