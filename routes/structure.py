@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request, session, redirect, url_for, rende
 
 from extensions import db
 from models import SchoolGroup, Grade, Stream, Semester, Department
-from utils import log_activity
+from utils import log_activity, validate_json_request
 
 structure_bp = Blueprint('structure', __name__, url_prefix='/structure')
 
@@ -42,7 +42,9 @@ def handle_school_structure(item_id=None):
         return jsonify({"message": "Unauthorized"}), 401
     
     if request.method == 'POST': # Create New
-        data = request.json
+        data, error_response, status_code = validate_json_request()
+        if error_response:
+            return error_response, status_code
         new_group = SchoolGroup(name=data['name'])
         db.session.add(new_group)
         db.session.flush() # Get the ID for relationships
@@ -58,7 +60,9 @@ def handle_school_structure(item_id=None):
 
     group = SchoolGroup.query.get_or_404(item_id)
     if request.method == 'PUT': # Update Existing
-        data = request.json
+        data, error_response, status_code = validate_json_request()
+        if error_response:
+            return error_response, status_code
         group.name = data['name']
         
         # Sync Grades
@@ -104,7 +108,9 @@ def handle_college_structure(item_id=None):
         return jsonify({"message": "Unauthorized"}), 401
 
     if request.method == 'POST':
-        data = request.json
+        data, error_response, status_code = validate_json_request()
+        if error_response:
+            return error_response, status_code
         new_sem = Semester(name=data['name'])
         db.session.add(new_sem)
         db.session.flush()
@@ -117,7 +123,9 @@ def handle_college_structure(item_id=None):
 
     semester = Semester.query.get_or_404(item_id)
     if request.method == 'PUT':
-        data = request.json
+        data, error_response, status_code = validate_json_request()
+        if error_response:
+            return error_response, status_code
         semester.name = data['name']
         
         existing_depts = {d.id: d for d in semester.departments}

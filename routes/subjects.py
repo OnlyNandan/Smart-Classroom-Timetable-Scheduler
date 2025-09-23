@@ -3,7 +3,7 @@ from sqlalchemy import exc
 
 from extensions import db
 from models import SchoolGroup, Semester, Subject, Course
-from utils import log_activity
+from utils import log_activity, validate_json_request
 
 subjects_bp = Blueprint('subjects', __name__, url_prefix='/subjects')
 
@@ -64,7 +64,12 @@ def handle_subjects(mode, item_id=None):
     if 'user_id' not in session:
         return jsonify({"message": "Unauthorized"}), 401
     
-    data = request.json if request.method in ['POST', 'PUT'] else None
+    if request.method in ['POST', 'PUT']:
+        data, error_response, status_code = validate_json_request()
+        if error_response:
+            return error_response, status_code
+    else:
+        data = None
 
     try:
         if request.method == 'POST':

@@ -2,6 +2,7 @@ import hashlib
 import random
 import string
 from datetime import datetime, timedelta, timezone
+from flask import request, jsonify
 
 from extensions import db
 from models import AppConfig, ActivityLog, SystemMetric
@@ -41,4 +42,14 @@ def calculate_growth(metric_key, current_value):
     if last_metric and last_metric.value > 0:
         return round(((current_value - last_metric.value) / last_metric.value) * 100, 1)
     return 0
+
+def validate_json_request():
+    """Utility function to validate JSON requests and return data or error response"""
+    try:
+        data = request.get_json()
+        if not data:
+            return None, jsonify({"message": "No JSON data provided"}), 400
+        return data, None, None
+    except Exception as e:
+        return None, jsonify({"message": f"Invalid JSON data: {str(e)}"}), 400
 
