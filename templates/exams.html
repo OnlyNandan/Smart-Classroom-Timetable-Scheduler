@@ -1,0 +1,686 @@
+{% extends "base.html" %}
+
+{% block title %}Exam Management{% endblock %}
+
+{% block header %}
+<h1 class="text-3xl font-bold text-gray-200">Exam Management</h1>
+<p class="text-gray-400 mt-1">Schedule exams and manage seating arrangements</p>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Controls Panel -->
+    <div class="glass-card p-6">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <button id="add-exam-btn" class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    Add Exam
+                </button>
+                
+                <button id="generate-schedule-btn" class="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-2 rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    Generate Schedule
+                </button>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <label class="text-sm font-medium text-gray-300">Filter:</label>
+                <select id="exam-filter" class="px-3 py-2 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-800 text-gray-100">
+                    <option value="all">All Exams</option>
+                    <option value="upcoming">Upcoming</option>
+                    <option value="completed">Completed</option>
+                    <option value="final">Final Exams</option>
+                    <option value="midterm">Midterm Exams</option>
+                    <option value="quiz">Quizzes</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exams List -->
+    <div class="glass-card p-6">
+        <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-2xl font-semibold text-gray-200">Exams</h2>
+            <div class="text-sm text-gray-400">
+                <span id="exam-count">0</span> exams scheduled
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading-state" class="hidden text-center py-12">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p class="mt-2 text-gray-400">Loading exams...</p>
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="hidden text-center py-12">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-100">No exams scheduled</h3>
+            <p class="mt-1 text-sm text-gray-400">Get started by adding your first exam.</p>
+            <div class="mt-6">
+                <button id="add-exam-empty-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                    Add Exam
+                </button>
+            </div>
+        </div>
+
+        <!-- Exams Table -->
+        <div id="exams-container" class="hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="border-b border-gray-200 dark:border-gray-700">
+                            <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Exam Name</th>
+                            <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Subject</th>
+                            <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Date & Time</th>
+                            <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Duration</th>
+                            <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Type</th>
+                            <th class="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="exams-table-body">
+                        <!-- Exams will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="glass-card p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-blue-900 text-blue-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-400">Total Exams</p>
+                    <p id="total-exams" class="text-2xl font-semibold text-gray-100">0</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-green-900 text-green-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-400">Upcoming</p>
+                    <p id="upcoming-exams" class="text-2xl font-semibold text-gray-100">0</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-yellow-900 text-yellow-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-400">This Week</p>
+                    <p id="this-week-exams" class="text-2xl font-semibold text-gray-100">0</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-purple-900 text-purple-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-400">Students</p>
+                    <p id="total-students" class="text-2xl font-semibold text-gray-100">0</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Exam Modal -->
+<div id="exam-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-gray-800 rounded-lg max-w-md w-full p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 id="modal-title" class="text-lg font-semibold text-gray-100">Add Exam</h3>
+                <button id="close-modal" class="text-gray-400 hover:text-gray-300">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <form id="exam-form">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Exam Name</label>
+                        <input type="text" id="exam-name" name="name" required 
+                               class="w-full px-3 py-2 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-700 text-gray-100">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Subject/Course</label>
+                        <select id="exam-subject" name="subject_id" required
+                                class="w-full px-3 py-2 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-700 text-gray-100">
+                            <option value="">Select Subject/Course</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Date & Time</label>
+                        <input type="datetime-local" id="exam-date" name="date" required
+                               class="w-full px-3 py-2 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-700 text-gray-100">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Duration (minutes)</label>
+                        <input type="number" id="exam-duration" name="duration" value="180" min="30" max="480"
+                               class="w-full px-3 py-2 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-700 text-gray-100">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Exam Type</label>
+                        <select id="exam-type" name="type"
+                                class="w-full px-3 py-2 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-700 text-gray-100">
+                            <option value="final">Final Exam</option>
+                            <option value="midterm">Midterm Exam</option>
+                            <option value="quiz">Quiz</option>
+                            <option value="assignment">Assignment</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" id="cancel-exam" class="px-4 py-2 text-gray-300 hover:bg-gray-700 rounded-lg transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        Save Exam
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Generation Modal -->
+<div id="schedule-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-gray-800 rounded-lg max-w-md w-full p-6">
+            <div class="text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-900 mb-4">
+                    <svg class="h-6 w-6 text-green-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-100 mb-2">Generating Exam Schedule</h3>
+                <p class="text-sm text-gray-400 mb-4">AI is optimizing exam dates and seating arrangements...</p>
+                <div class="w-full bg-gray-700 rounded-full h-2 mb-4">
+                    <div id="schedule-progress" class="bg-green-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p id="schedule-progress-text" class="text-xs text-gray-400">Initializing...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="fixed top-5 right-5 z-50 hidden">
+    <div class="bg-gray-800 rounded-lg shadow-lg border-l-4 p-4 max-w-sm">
+        <div class="flex items-center">
+            <div id="toast-icon" class="flex-shrink-0"></div>
+            <div class="ml-3">
+                <p id="toast-message" class="text-sm font-medium text-gray-100"></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const APP_MODE = '{{ g.app_mode }}';
+    
+    // Element references
+    const addExamBtn = document.getElementById('add-exam-btn');
+    const addExamEmptyBtn = document.getElementById('add-exam-empty-btn');
+    const generateScheduleBtn = document.getElementById('generate-schedule-btn');
+    const examFilter = document.getElementById('exam-filter');
+    const examModal = document.getElementById('exam-modal');
+    const scheduleModal = document.getElementById('schedule-modal');
+    const examForm = document.getElementById('exam-form');
+    const closeModal = document.getElementById('close-modal');
+    const cancelExam = document.getElementById('cancel-exam');
+    const loadingState = document.getElementById('loading-state');
+    const emptyState = document.getElementById('empty-state');
+    const examsContainer = document.getElementById('exams-container');
+    const examsTableBody = document.getElementById('exams-table-body');
+    const toast = document.getElementById('toast');
+    
+    // State
+    let exams = [];
+    let filteredExams = [];
+    let currentExamId = null;
+    let isEditMode = false;
+    
+    // Initialize
+    loadExams();
+    loadSubjects();
+    setupEventListeners();
+    
+    function setupEventListeners() {
+        addExamBtn.addEventListener('click', () => openExamModal());
+        addExamEmptyBtn.addEventListener('click', () => openExamModal());
+        generateScheduleBtn.addEventListener('click', generateSchedule);
+        examFilter.addEventListener('change', applyFilter);
+        closeModal.addEventListener('click', closeExamModal);
+        cancelExam.addEventListener('click', closeExamModal);
+        examForm.addEventListener('submit', handleExamSubmit);
+        
+        // Close modal on outside click
+        examModal.addEventListener('click', (e) => {
+            if (e.target === examModal) {
+                closeExamModal();
+            }
+        });
+    }
+    
+    async function loadExams() {
+        showLoading();
+        try {
+            const response = await fetch('/api/exams');
+            if (response.ok) {
+                const data = await response.json();
+                exams = data.exams;
+                filteredExams = [...exams];
+                updateStatistics();
+                renderExams();
+                hideLoading();
+                
+                if (exams.length === 0) {
+                    showEmptyState();
+                } else {
+                    showExams();
+                }
+            } else {
+                throw new Error('Failed to load exams');
+            }
+        } catch (error) {
+            console.error('Error loading exams:', error);
+            showToast('Failed to load exams', 'error');
+            hideLoading();
+            showEmptyState();
+        }
+    }
+    
+    async function loadSubjects() {
+        try {
+            const response = await fetch(`/api/subjects/parents/${APP_MODE}`);
+            if (response.ok) {
+                const data = await response.json();
+                const subjectSelect = document.getElementById('exam-subject');
+                
+                // Clear existing options
+                subjectSelect.innerHTML = '<option value="">Select Subject/Course</option>';
+                
+                // Add subjects/courses
+                data.parents.forEach(parent => {
+                    const optgroup = document.createElement('optgroup');
+                    optgroup.label = parent.name;
+                    
+                    parent.children.forEach(child => {
+                        const option = document.createElement('option');
+                        option.value = child.id;
+                        option.textContent = `${child.name} (${child.id})`;
+                        optgroup.appendChild(option);
+                    });
+                    
+                    subjectSelect.appendChild(optgroup);
+                });
+            }
+        } catch (error) {
+            console.error('Error loading subjects:', error);
+        }
+    }
+    
+    function openExamModal(exam = null) {
+        isEditMode = exam !== null;
+        currentExamId = exam ? exam.id : null;
+        
+        document.getElementById('modal-title').textContent = isEditMode ? 'Edit Exam' : 'Add Exam';
+        
+        if (exam) {
+            document.getElementById('exam-name').value = exam.name;
+            document.getElementById('exam-subject').value = exam.subject_id || exam.course_id || '';
+            document.getElementById('exam-date').value = new Date(exam.date).toISOString().slice(0, 16);
+            document.getElementById('exam-duration').value = exam.duration;
+            document.getElementById('exam-type').value = exam.type;
+        } else {
+            examForm.reset();
+            document.getElementById('exam-duration').value = '180';
+            document.getElementById('exam-type').value = 'final';
+        }
+        
+        examModal.classList.remove('hidden');
+    }
+    
+    function closeExamModal() {
+        examModal.classList.add('hidden');
+        examForm.reset();
+        currentExamId = null;
+        isEditMode = false;
+    }
+    
+    async function handleExamSubmit(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(examForm);
+        const examData = {
+            name: formData.get('name'),
+            date: formData.get('date'),
+            duration: parseInt(formData.get('duration')),
+            type: formData.get('type'),
+            subject_id: formData.get('subject_id') || null,
+            course_id: APP_MODE === 'college' ? formData.get('subject_id') : null
+        };
+        
+        try {
+            const url = isEditMode ? `/api/exams/${currentExamId}` : '/api/exams';
+            const method = isEditMode ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(examData)
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                showToast(result.message, 'success');
+                closeExamModal();
+                loadExams();
+            } else {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to save exam');
+            }
+        } catch (error) {
+            showToast('Failed to save exam: ' + error.message, 'error');
+        }
+    }
+    
+    async function generateSchedule() {
+        if (exams.length === 0) {
+            showToast('No exams to schedule', 'error');
+            return;
+        }
+        
+        showScheduleModal();
+        simulateScheduleProgress();
+        
+        try {
+            const response = await fetch('/api/generate_schedule', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    exam_ids: exams.map(exam => exam.id)
+                })
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                hideScheduleModal();
+                showToast(result.message, 'success');
+                loadExams();
+            } else {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to generate schedule');
+            }
+        } catch (error) {
+            hideScheduleModal();
+            showToast('Failed to generate schedule: ' + error.message, 'error');
+        }
+    }
+    
+    function simulateScheduleProgress() {
+        const steps = [
+            { progress: 20, text: 'Analyzing exam constraints...' },
+            { progress: 40, text: 'Optimizing exam dates...' },
+            { progress: 60, text: 'Assigning classrooms...' },
+            { progress: 80, text: 'Creating seating plans...' },
+            { progress: 100, text: 'Finalizing schedule...' }
+        ];
+        
+        let currentStep = 0;
+        const interval = setInterval(() => {
+            if (currentStep < steps.length) {
+                const step = steps[currentStep];
+                document.getElementById('schedule-progress').style.width = step.progress + '%';
+                document.getElementById('schedule-progress-text').textContent = step.text;
+                currentStep++;
+            } else {
+                clearInterval(interval);
+            }
+        }, 1000);
+    }
+    
+    function applyFilter() {
+        const filter = examFilter.value;
+        const now = new Date();
+        
+        filteredExams = exams.filter(exam => {
+            const examDate = new Date(exam.date);
+            
+            switch (filter) {
+                case 'upcoming':
+                    return examDate > now;
+                case 'completed':
+                    return examDate < now;
+                case 'final':
+                    return exam.type === 'final';
+                case 'midterm':
+                    return exam.type === 'midterm';
+                case 'quiz':
+                    return exam.type === 'quiz';
+                default:
+                    return true;
+            }
+        });
+        
+        renderExams();
+    }
+    
+    function renderExams() {
+        if (filteredExams.length === 0) {
+            showEmptyState();
+            return;
+        }
+        
+        showExams();
+        
+        examsTableBody.innerHTML = '';
+        filteredExams.forEach(exam => {
+            const row = document.createElement('tr');
+            row.className = 'border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700';
+            
+            const examDate = new Date(exam.date);
+            const isUpcoming = examDate > new Date();
+            
+            row.innerHTML = `
+                <td class="py-3 px-4">
+                    <div class="font-medium text-gray-900 dark:text-gray-100">${exam.name}</div>
+                </td>
+                <td class="py-3 px-4">
+                    <div class="text-gray-700 dark:text-gray-300">${exam.subject_name}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">${exam.subject_code}</div>
+                </td>
+                <td class="py-3 px-4">
+                    <div class="text-gray-700 dark:text-gray-300">${examDate.toLocaleDateString()}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">${examDate.toLocaleTimeString()}</div>
+                </td>
+                <td class="py-3 px-4">
+                    <span class="text-gray-700 dark:text-gray-300">${exam.duration} min</span>
+                </td>
+                <td class="py-3 px-4">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTypeColor(exam.type)}">
+                        ${exam.type.charAt(0).toUpperCase() + exam.type.slice(1)}
+                    </span>
+                </td>
+                <td class="py-3 px-4">
+                    <div class="flex items-center space-x-2">
+                        <button onclick="editExam(${exam.id})" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                        </button>
+                        <button onclick="viewSeating(${exam.id})" class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                            </svg>
+                        </button>
+                        <button onclick="deleteExam(${exam.id})" class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </td>
+            `;
+            
+            examsTableBody.appendChild(row);
+        });
+    }
+    
+    function getTypeColor(type) {
+        const colors = {
+            'final': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+            'midterm': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+            'quiz': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+            'assignment': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+        };
+        return colors[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+    }
+    
+    function updateStatistics() {
+        const now = new Date();
+        const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        
+        const upcoming = exams.filter(exam => new Date(exam.date) > now).length;
+        const thisWeek = exams.filter(exam => {
+            const examDate = new Date(exam.date);
+            return examDate > now && examDate <= weekFromNow;
+        }).length;
+        
+        document.getElementById('exam-count').textContent = exams.length;
+        document.getElementById('total-exams').textContent = exams.length;
+        document.getElementById('upcoming-exams').textContent = upcoming;
+        document.getElementById('this-week-exams').textContent = thisWeek;
+        document.getElementById('total-students').textContent = '0'; // Would need to fetch from API
+    }
+    
+    function showLoading() {
+        loadingState.classList.remove('hidden');
+        examsContainer.classList.add('hidden');
+        emptyState.classList.add('hidden');
+    }
+    
+    function hideLoading() {
+        loadingState.classList.add('hidden');
+    }
+    
+    function showExams() {
+        examsContainer.classList.remove('hidden');
+        emptyState.classList.add('hidden');
+    }
+    
+    function showEmptyState() {
+        emptyState.classList.remove('hidden');
+        examsContainer.classList.add('hidden');
+    }
+    
+    function showScheduleModal() {
+        scheduleModal.classList.remove('hidden');
+    }
+    
+    function hideScheduleModal() {
+        scheduleModal.classList.add('hidden');
+    }
+    
+    function showToast(message, type = 'info') {
+        const toastMessage = document.getElementById('toast-message');
+        const toastIcon = document.getElementById('toast-icon');
+        
+        toastMessage.textContent = message;
+        
+        const icons = {
+            success: '<svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>',
+            error: '<svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>',
+            info: '<svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>'
+        };
+        
+        toastIcon.innerHTML = icons[type] || icons.info;
+        
+        toast.classList.remove('hidden');
+        
+        setTimeout(() => {
+            toast.classList.add('hidden');
+        }, 5000);
+    }
+    
+    // Global functions for inline event handlers
+    window.editExam = function(examId) {
+        const exam = exams.find(e => e.id === examId);
+        if (exam) {
+            openExamModal(exam);
+        }
+    };
+    
+    window.viewSeating = function(examId) {
+        // Implement seating plan view
+        showToast('Seating plan view coming soon!', 'info');
+    };
+    
+    window.deleteExam = async function(examId) {
+        if (confirm('Are you sure you want to delete this exam?')) {
+            try {
+                const response = await fetch(`/api/exams/${examId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showToast(result.message, 'success');
+                    loadExams();
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Failed to delete exam');
+                }
+            } catch (error) {
+                showToast('Failed to delete exam: ' + error.message, 'error');
+            }
+        }
+    };
+});
+</script>
+{% endblock %}

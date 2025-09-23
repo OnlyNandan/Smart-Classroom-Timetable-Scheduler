@@ -22,6 +22,10 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
             Generate Timetable
         </button>
+        <button id="schedule-exams-btn" class="bg-green-600 hover:bg-green-500 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm inline-flex items-center gap-x-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m10.5 14-2 2 2 2"/></svg>
+            Schedule Exams
+        </button>
     </div>
     
     <!-- At a Glance -->
@@ -60,7 +64,7 @@
             </h3>
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {% set actions = [
-                    ('Schedule Exams', '#', '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m10.5 14-2 2 2 2"/>'),
+                    ('Schedule Exams', url_for('exams.manage_exams'), '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m10.5 14-2 2 2 2"/>'),
                     ('Manage Teachers', url_for('staff.manage_staff'), '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'),
                     ('Add Subjects', url_for('subjects.manage_subjects'), '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>'),
                     ('View Analytics', url_for('analytics.analytics_page'), '<path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>'),
@@ -126,5 +130,137 @@
         </div>
     </div>
 </div>
+
+<!-- Loading Modal -->
+<div id="loading-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-gray-800 rounded-lg max-w-md w-full p-6">
+            <div class="text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-violet-900 mb-4">
+                    <svg class="h-6 w-6 text-violet-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-100 mb-2">Generating Timetable</h3>
+                <p class="text-sm text-gray-400 mb-4">AI is optimizing schedules and resolving conflicts...</p>
+                <div class="w-full bg-gray-700 rounded-full h-2 mb-4">
+                    <div id="progress-bar" class="bg-violet-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p id="progress-text" class="text-xs text-gray-400">Initializing...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="fixed top-5 right-5 z-50 hidden">
+    <div class="bg-gray-800 rounded-lg shadow-lg border-l-4 p-4 max-w-sm">
+        <div class="flex items-center">
+            <div id="toast-icon" class="flex-shrink-0"></div>
+            <div class="ml-3">
+                <p id="toast-message" class="text-sm font-medium text-gray-100"></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const generateBtn = document.getElementById('generate-btn');
+    const scheduleExamsBtn = document.getElementById('schedule-exams-btn');
+    const loadingModal = document.getElementById('loading-modal');
+    const toast = document.getElementById('toast');
+    
+    // Generate Timetable functionality
+    generateBtn.addEventListener('click', async () => {
+        showLoadingModal();
+        simulateProgress();
+        
+        try {
+            const response = await fetch('/api/generate_timetable', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                hideLoadingModal();
+                showToast('Timetable generated successfully!', 'success');
+                // Refresh the page to show updated statistics
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to generate timetable');
+            }
+        } catch (error) {
+            hideLoadingModal();
+            showToast('Failed to generate timetable: ' + error.message, 'error');
+        }
+    });
+    
+    // Schedule Exams functionality
+    scheduleExamsBtn.addEventListener('click', () => {
+        window.location.href = '/exams';
+    });
+    
+    function showLoadingModal() {
+        loadingModal.classList.remove('hidden');
+    }
+    
+    function hideLoadingModal() {
+        loadingModal.classList.add('hidden');
+    }
+    
+    function simulateProgress() {
+        const steps = [
+            { progress: 20, text: 'Analyzing teacher schedules...' },
+            { progress: 40, text: 'Optimizing classroom assignments...' },
+            { progress: 60, text: 'Resolving conflicts...' },
+            { progress: 80, text: 'Generating optimal timetable...' },
+            { progress: 100, text: 'Finalizing schedule...' }
+        ];
+        
+        let currentStep = 0;
+        const interval = setInterval(() => {
+            if (currentStep < steps.length) {
+                const step = steps[currentStep];
+                document.getElementById('progress-bar').style.width = step.progress + '%';
+                document.getElementById('progress-text').textContent = step.text;
+                currentStep++;
+            } else {
+                clearInterval(interval);
+            }
+        }, 1000);
+    }
+    
+    function showToast(message, type = 'info') {
+        const toastMessage = document.getElementById('toast-message');
+        const toastIcon = document.getElementById('toast-icon');
+        
+        toastMessage.textContent = message;
+        
+        const icons = {
+            success: '<svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>',
+            error: '<svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>',
+            info: '<svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>'
+        };
+        
+        toastIcon.innerHTML = icons[type] || icons.info;
+        
+        toast.classList.remove('hidden');
+        
+        setTimeout(() => {
+            toast.classList.add('hidden');
+        }, 5000);
+    }
+});
+</script>
 {% endblock %}
 

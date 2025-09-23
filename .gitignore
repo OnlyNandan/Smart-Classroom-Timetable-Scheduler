@@ -16,7 +16,6 @@ instance/
 *.log
 
 *.env
-config.py
 settings.py
 
 .DS_Store

@@ -17,32 +17,125 @@
         ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px;}
         .active-nav-link { background-color: rgba(124, 58, 237, 0.3); color: #c4b5fd; font-weight: 600; }
         .active-nav-link svg { color: #a78bfa; }
+        
+        /* Enhanced accessibility features */
+        .focus-visible:focus-visible {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
+        }
+        
+        .high-contrast {
+            filter: contrast(150%);
+        }
+        
+        .dyslexia-friendly {
+            font-family: 'Comic Sans MS', cursive;
+            letter-spacing: 0.1em;
+            line-height: 1.8;
+        }
+        
+        .reduced-motion {
+            animation: none !important;
+            transition: none !important;
+        }
+        
+        .voice-active {
+            animation: pulse 1s infinite;
+            background: linear-gradient(45deg, #10b981, #059669);
+        }
+        
+        .skeleton {
+            background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+        
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        /* Smooth transitions */
+        * {
+            transition: all 0.3s ease;
+        }
     </style>
 </head>
 <body class="bg-gradient-body text-gray-200">
+    <!-- Accessibility Skip Link -->
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-blue-600 text-white px-4 py-2 rounded-md z-50">
+        Skip to main content
+    </a>
+    
+    <!-- Voice Command Indicator -->
+    <div id="voice-indicator" class="fixed top-4 right-4 z-50 hidden">
+        <div class="bg-green-500 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+            <div class="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+            <span class="text-sm font-medium">Listening...</span>
+        </div>
+    </div>
+    
+    <!-- Accessibility Controls -->
+    <div id="accessibility-panel" class="fixed top-4 left-4 z-50 hidden">
+        <div class="glass-card p-4 rounded-lg shadow-lg">
+            <h3 class="text-sm font-semibold mb-3 text-gray-200">Accessibility</h3>
+            <div class="space-y-2">
+                <button id="high-contrast-toggle" class="w-full text-left text-sm px-3 py-2 rounded hover:bg-gray-700 text-gray-300">
+                    High Contrast
+                </button>
+                <button id="dyslexia-toggle" class="w-full text-left text-sm px-3 py-2 rounded hover:bg-gray-700 text-gray-300">
+                    Dyslexia Friendly
+                </button>
+                <button id="reduced-motion-toggle" class="w-full text-left text-sm px-3 py-2 rounded hover:bg-gray-700 text-gray-300">
+                    Reduced Motion
+                </button>
+                <button id="voice-commands-toggle" class="w-full text-left text-sm px-3 py-2 rounded hover:bg-gray-700 text-gray-300">
+                    Voice Commands
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Accessibility Toggle Button -->
+    <button id="accessibility-toggle" class="fixed top-4 left-4 z-50 p-3 rounded-full bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-300 focus-visible" 
+            aria-label="Accessibility options">
+        <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"></path>
+        </svg>
+    </button>
+
     <div class="flex h-screen overflow-hidden">
-        <!-- Responsive Sidebar -->
+        <!-- Sidebar -->
         <aside id="sidebar" class="w-64 flex-shrink-0 glass-sidebar fixed inset-y-0 left-0 z-30 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
+            <!-- Logo -->
             <div class="flex items-center justify-center h-20 border-b border-gray-800">
                 <h1 class="text-2xl font-bold text-purple-400 px-4 text-center">{{ institute_name }}</h1>
             </div>
-            <nav class="mt-4 px-4 space-y-2">
+            
+            <!-- Navigation -->
+            <nav class="mt-4 px-4 space-y-2" role="navigation" aria-label="Main navigation">
                 {% if g.app_mode %}
                     {% set level_name = 'Structure' if g.app_mode == 'school' else 'Semesters' %}
                     {% set section_name = 'Sections' if g.app_mode == 'school' else 'Batches' %}
                     
                     {% set nav_items = [
-                        ('main.dashboard', 'Dashboard', '<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />'),
-                        ('structure.manage_structure', level_name, '<path stroke-linecap="round" stroke-linejoin="round" d="M12 12.75c1.148 0 2.278.08 3.383.237 1.037.148 1.875 1.05 1.875 2.108V18.75c0 1.104-.896 2-2 2H8.742c-1.104 0-2-.896-2-2v-3.655c0-1.058.838-1.96 1.875-2.108C9.722 12.83 10.852 12.75 12 12.75z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 12.75c-1.72 0-3.303-.42-4.646-1.172C6.23 11.02 6 10.373 6 9.75V6.75c0-.985.656-1.855 1.591-2.122C8.58 4.37 10.21 4.125 12 4.125c1.79 0 3.42.245 4.409.503C17.344 4.895 18 5.765 18 6.75v3c0 .623-.23 1.27-.654 1.828C16.003 12.33 14.42 12.75 12 12.75z" />'),
-                        ('subjects.manage_subjects', 'Subjects', '<path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />'),
-                        ('staff.manage_staff', 'Teachers', '<path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-4.663M12 12A3.75 3.75 0 1012 4.5a3.75 3.75 0 000 7.5z" />'),
-                        ('classrooms.manage_classrooms', 'Classrooms', '<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h6.75M9 11.25h6.75M9 15.75h6.75M9 20.25h6.75" />'),
-                        ('sections.manage_sections', section_name, '<path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m-7.5-2.928A3 3 0 017.5 12.5m3 14.25v-2.545m0 0a3 3 0 01-3-3m3 3a3 3 0 00-3-3m-3.75 6.118a2.986 2.986 0 01-3.75 0M8.25 9.75A3.75 3.75 0 0112 6m3.75 3.75a3.75 3.75 0 01-7.5 0" />'),
-                        ('timetable.view_timetable', 'Timetable', '<path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0h18M12 12.75h.008v.008H12v-.008z" />')
+                        ('main.dashboard', 'Dashboard', 'M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z'),
+                        ('structure.manage_structure', level_name, 'M12 12.75c1.148 0 2.278.08 3.383.237 1.037.148 1.875 1.05 1.875 2.108V18.75c0 1.104-.896 2-2 2H8.742c-1.104 0-2-.896-2-2v-3.655c0-1.058.838-1.96 1.875-2.108C9.722 12.83 10.852 12.75 12 12.75z M12 12.75c-1.72 0-3.303-.42-4.646-1.172C6.23 11.02 6 10.373 6 9.75V6.75c0-.985.656-1.855 1.591-2.122C8.58 4.37 10.21 4.125 12 4.125c1.79 0 3.42.245 4.409.503C17.344 4.895 18 5.765 18 6.75v3c0 .623-.23 1.27-.654 1.828C16.003 12.33 14.42 12.75 12 12.75z'),
+                        ('subjects.manage_subjects', 'Subjects', 'M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25'),
+                        ('staff.manage_staff', 'Teachers', 'M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-4.663M12 12A3.75 3.75 0 1012 4.5a3.75 3.75 0 000 7.5z'),
+                        ('classrooms.manage_classrooms', 'Classrooms', 'M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h6.75M9 11.25h6.75M9 15.75h6.75M9 20.25h6.75'),
+                        ('sections.manage_sections', section_name, 'M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m-7.5-2.928A3 3 0 017.5 12.5m3 14.25v-2.545m0 0a3 3 0 01-3-3m3 3a3 3 0 00-3-3m-3.75 6.118a2.986 2.986 0 01-3.75 0M8.25 9.75A3.75 3.75 0 0112 6m3.75 3.75a3.75 3.75 0 01-7.5 0'),
+                        ('timetable.view_timetable', 'Timetable', 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0121 18.75m-18 0h18M12 12.75h.008v.008H12v-.008z'),
+                        ('exams.manage_exams', 'Exams', 'M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2 2 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z')
                     ] %}
+                    
                     {% for route, name, svg_path in nav_items %}
-                    <a href="{{ url_for(route) }}" class="nav-link flex items-center px-4 py-3 text-gray-400 rounded-lg hover:bg-purple-500/20 hover:text-gray-200 transition-colors duration-200">
-                        <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">{{ svg_path | safe }}</svg>
+                    <a href="{{ url_for(route) }}" 
+                       class="nav-link flex items-center px-4 py-3 text-gray-400 rounded-lg hover:bg-purple-500/20 hover:text-gray-200 transition-colors duration-200 focus-visible"
+                       aria-label="{{ name }}">
+                        <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="{{ svg_path }}"></path>
+                        </svg>
                         <span class="mx-3 font-medium">{{ name }}</span>
                     </a>
                     {% endfor %}
@@ -52,89 +145,244 @@
 
         <!-- Main Content -->
         <div class="flex-1 flex flex-col overflow-hidden md:ml-64">
-             <header class="flex items-center justify-between p-4 h-20 bg-gray-900/50 flex-shrink-0">
-                <!-- Hamburger Menu for Mobile -->
-                <button id="sidebar-toggle" class="md:hidden p-2 rounded-md text-gray-400 hover:bg-gray-700">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            <!-- Header -->
+            <header class="flex items-center justify-between p-4 h-20 bg-gray-900/50 flex-shrink-0">
+                <!-- Mobile Menu Button -->
+                <button id="sidebar-toggle" 
+                        class="md:hidden p-2 rounded-md text-gray-400 hover:bg-gray-700 focus-visible"
+                        aria-label="Toggle sidebar">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
                 </button>
                 
-                <div class="hidden sm:block">{% block header %}{% endblock %}</div>
+                <!-- Header Content -->
+                <div class="hidden sm:block flex-1">
+                    {% block header %}{% endblock %}
+                </div>
                 
-                <div class="flex-grow sm:hidden"></div> <!-- Spacer for mobile to center header content -->
-                
+                <!-- User Menu -->
                 {% if session.username %}
                 <div class="relative">
-                    <button id="user-menu-button" class="flex items-center space-x-2">
-                        <span class="text-gray-300 hidden sm:block">Welcome, {{ session.username }}</span>
-                        <svg class="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                    <button id="user-menu-button" 
+                            class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-700 focus-visible"
+                            aria-label="User menu">
+                        <span class="text-gray-300 hidden sm:block font-medium">{{ session.username }}</span>
+                        <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
                     </button>
                     <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg py-1 z-20">
-                        <div class="px-4 py-2 text-xs text-gray-400">{{ session.role|capitalize }}</div>
-                        <a href="{{ url_for('main.logout') }}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Logout</a>
+                        <div class="px-4 py-2 text-xs text-gray-400 border-b border-gray-700">
+                            {{ session.role|capitalize }}
+                        </div>
+                        <a href="{{ url_for('main.logout') }}" 
+                           class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
+                            Logout
+                        </a>
                     </div>
                 </div>
                 {% endif %}
             </header>
-            <main class="flex-1 overflow-y-auto p-6">
+            
+            <!-- Main Content Area -->
+            <main id="main-content" class="flex-1 overflow-y-auto p-6" role="main">
+                <!-- Flash Messages -->
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         {% for category, message in messages %}
-                        <div class="p-4 mb-4 text-sm rounded-lg {{ 'bg-green-800 text-green-200' if category == 'success' else 'bg-red-800 text-red-200' }}" role="alert">
+                        <div class="p-4 mb-4 text-sm rounded-lg {{ 'bg-green-800 text-green-200' if category == 'success' else 'bg-red-800 text-red-200' }}" 
+                             role="alert" aria-live="polite">
                             {{ message }}
                         </div>
                         {% endfor %}
                     {% endif %}
                 {% endwith %}
+                
+                <!-- Page Content -->
                 {% block content %}{% endblock %}
             </main>
         </div>
-        <!-- Sidebar Overlay for Mobile -->
+        
+        <!-- Mobile Sidebar Overlay -->
         <div id="sidebar-overlay" class="hidden md:hidden fixed inset-0 bg-black/50 z-20"></div>
     </div>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const sidebar = document.getElementById('sidebar');
-    const sidebarToggle = document.getElementById('sidebar-toggle');
-    const sidebarOverlay = document.getElementById('sidebar-overlay');
 
-    const toggleSidebar = () => {
-        sidebar.classList.toggle('-translate-x-full');
-        sidebarOverlay.classList.toggle('hidden');
-    };
-
-    if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleSidebar();
-        });
-    }
-
-    if (sidebarOverlay) {
-        sidebarOverlay.addEventListener('click', toggleSidebar);
-    }
-    
-    const userMenuButton = document.getElementById('user-menu-button');
-    const userMenu = document.getElementById('user-menu');
-    if(userMenuButton){
-        userMenuButton.addEventListener('click', () => {
-            userMenu.classList.toggle('hidden');
-        });
-        document.addEventListener('click', (event) => {
-            if (!userMenuButton.contains(event.target) && !userMenu.contains(event.target)) {
-                userMenu.classList.add('hidden');
+    <!-- JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Sidebar Management
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebar-toggle');
+            const sidebarOverlay = document.getElementById('sidebar-overlay');
+            
+            const toggleSidebar = () => {
+                sidebar.classList.toggle('-translate-x-full');
+                sidebarOverlay.classList.toggle('hidden');
+            };
+            
+            sidebarToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleSidebar();
+            });
+            
+            sidebarOverlay.addEventListener('click', toggleSidebar);
+            
+            // User Menu Management
+            const userMenuButton = document.getElementById('user-menu-button');
+            const userMenu = document.getElementById('user-menu');
+            
+            if (userMenuButton && userMenu) {
+                userMenuButton.addEventListener('click', () => {
+                    userMenu.classList.toggle('hidden');
+                });
+                
+                document.addEventListener('click', (event) => {
+                    if (!userMenuButton.contains(event.target) && !userMenu.contains(event.target)) {
+                        userMenu.classList.add('hidden');
+                    }
+                });
             }
+            
+            // Active Navigation Highlighting
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.nav-link');
+            navLinks.forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active-nav-link');
+                }
+            });
+            
+            // Accessibility Features
+            const accessibilityToggle = document.getElementById('accessibility-toggle');
+            const accessibilityPanel = document.getElementById('accessibility-panel');
+            const highContrastToggle = document.getElementById('high-contrast-toggle');
+            const dyslexiaToggle = document.getElementById('dyslexia-toggle');
+            const reducedMotionToggle = document.getElementById('reduced-motion-toggle');
+            const voiceCommandsToggle = document.getElementById('voice-commands-toggle');
+            const voiceIndicator = document.getElementById('voice-indicator');
+            
+            // Accessibility panel toggle
+            accessibilityToggle.addEventListener('click', () => {
+                accessibilityPanel.classList.toggle('hidden');
+            });
+            
+            // High contrast toggle
+            highContrastToggle.addEventListener('click', () => {
+                document.body.classList.toggle('high-contrast');
+                const isEnabled = document.body.classList.contains('high-contrast');
+                localStorage.setItem('high-contrast', isEnabled);
+                highContrastToggle.textContent = isEnabled ? 'High Contrast ✓' : 'High Contrast';
+            });
+            
+            // Dyslexia friendly toggle
+            dyslexiaToggle.addEventListener('click', () => {
+                document.body.classList.toggle('dyslexia-friendly');
+                const isEnabled = document.body.classList.contains('dyslexia-friendly');
+                localStorage.setItem('dyslexia-friendly', isEnabled);
+                dyslexiaToggle.textContent = isEnabled ? 'Dyslexia Friendly ✓' : 'Dyslexia Friendly';
+            });
+            
+            // Reduced motion toggle
+            reducedMotionToggle.addEventListener('click', () => {
+                document.body.classList.toggle('reduced-motion');
+                const isEnabled = document.body.classList.contains('reduced-motion');
+                localStorage.setItem('reduced-motion', isEnabled);
+                reducedMotionToggle.textContent = isEnabled ? 'Reduced Motion ✓' : 'Reduced Motion';
+            });
+            
+            // Voice commands toggle
+            let recognition = null;
+            voiceCommandsToggle.addEventListener('click', () => {
+                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    if (!recognition) {
+                        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                        recognition = new SpeechRecognition();
+                        recognition.continuous = true;
+                        recognition.interimResults = false;
+                        recognition.lang = 'en-US';
+                        
+                        recognition.onstart = () => {
+                            voiceIndicator.classList.remove('hidden');
+                            voiceCommandsToggle.textContent = 'Voice Commands ✓';
+                        };
+                        
+                        recognition.onend = () => {
+                            voiceIndicator.classList.add('hidden');
+                        };
+                        
+                        recognition.onresult = (event) => {
+                            const command = event.results[event.results.length - 1][0].transcript.toLowerCase();
+                            handleVoiceCommand(command);
+                        };
+                    }
+                    
+                    if (recognition.isRunning) {
+                        recognition.stop();
+                        voiceIndicator.classList.add('hidden');
+                        voiceCommandsToggle.textContent = 'Voice Commands';
+                    } else {
+                        recognition.start();
+                    }
+                } else {
+                    alert('Voice recognition not supported in this browser');
+                }
+            });
+            
+            // Voice command handler
+            function handleVoiceCommand(command) {
+                if (command.includes('dashboard')) {
+                    window.location.href = '/dashboard';
+                } else if (command.includes('timetable')) {
+                    window.location.href = '/timetable';
+                } else if (command.includes('teachers')) {
+                    window.location.href = '/staff';
+                } else if (command.includes('students')) {
+                    window.location.href = '/sections';
+                } else if (command.includes('exams')) {
+                    window.location.href = '/exams';
+                } else if (command.includes('logout')) {
+                    window.location.href = '/logout';
+                }
+            }
+            
+            // Load saved accessibility settings
+            if (localStorage.getItem('high-contrast') === 'true') {
+                document.body.classList.add('high-contrast');
+                highContrastToggle.textContent = 'High Contrast ✓';
+            }
+            
+            if (localStorage.getItem('dyslexia-friendly') === 'true') {
+                document.body.classList.add('dyslexia-friendly');
+                dyslexiaToggle.textContent = 'Dyslexia Friendly ✓';
+            }
+            
+            if (localStorage.getItem('reduced-motion') === 'true') {
+                document.body.classList.add('reduced-motion');
+                reducedMotionToggle.textContent = 'Reduced Motion ✓';
+            }
+            
+            // Keyboard navigation
+            document.addEventListener('keydown', (e) => {
+                if (e.altKey && e.key === 'a') {
+                    e.preventDefault();
+                    accessibilityToggle.click();
+                }
+                if (e.altKey && e.key === 'm') {
+                    e.preventDefault();
+                    sidebarToggle.click();
+                }
+            });
+            
+            // Auto-hide accessibility panel when clicking outside
+            document.addEventListener('click', (event) => {
+                if (!accessibilityToggle.contains(event.target) && !accessibilityPanel.contains(event.target)) {
+                    accessibilityPanel.classList.add('hidden');
+                }
+            });
         });
-    }
-
-    const currentPath = window.location.pathname;
-    const navLinks = document.querySelectorAll('.nav-link');
-    navLinks.forEach(link => {
-        if (link.getAttribute('href') === currentPath) {
-            link.classList.add('active-nav-link');
-        }
-    });
-});
-</script>
-{% block scripts %}{% endblock %}
+    </script>
+    
+    {% block scripts %}{% endblock %}
 </body>
 </html>

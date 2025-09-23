@@ -124,8 +124,15 @@ class Exam(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     date = db.Column(db.DateTime, nullable=False)
+    duration = db.Column(db.Integer, nullable=False, default=180)  # Duration in minutes
+    type = db.Column(db.String(20), nullable=False, default='final')  # final, midterm, quiz
     subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'), nullable=True)
     course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=True)
+    
+    # Relationships
+    subject = relationship("Subject", backref="exams")
+    course = relationship("Course", backref="exams")
+    seating_plans = relationship("ExamSeating", backref="exam", cascade="all, delete-orphan")
 
 class ExamSeating(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -133,6 +140,10 @@ class ExamSeating(db.Model):
     student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
     classroom_id = db.Column(db.Integer, db.ForeignKey('classroom.id'), nullable=False)
     seat_number = db.Column(db.String(10))
+    
+    # Relationships
+    student = relationship("Student", backref="exam_seatings")
+    classroom = relationship("Classroom", backref="exam_seatings")
 
 # --- System & Logging ---
 class ActivityLog(db.Model):
