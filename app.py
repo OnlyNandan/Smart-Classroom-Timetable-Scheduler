@@ -326,7 +326,52 @@ def manage_classrooms(): return "<h1>Manage Classrooms</h1>"
 @app.route('/timetable')
 def view_timetable(): return "<h1>View Timetable</h1>"
 @app.route('/analytics')
-def analytics(): return "<h1>Analytics</h1>"
+def analytics():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('login'))
+
+    # Fetch all timetable entries, classrooms, and teachers
+    entries = TimetableEntry.query.all()
+    classrooms = Classroom.query.all()
+    teachers = Teacher.query.all()
+
+    total_rooms = len(classrooms)
+
+    # --- 1. Peak Period Occupancy ---
+    # We'll use "day-period" combination as time_slot
+    peak_period_data = {}
+    time_slots = sorted(list({f"{e.day} P{e.period}" for e in entries}))
+    
+    for slot in time_slots:
+        day, period = slot.split(' P')
+        period_entries = [e for e in entries if e.day == day and str(e.period) == period]
+        occupied_rooms = len(set(e.classroom_id for e in period_entries))
+        occupancy_percentage = (occupied_rooms / total_rooms) * 100 if total_rooms else 0
+        peak_period_data[slot] = round(occupancy_percentage, 1)
+
+    # --- 2. Room Utilization ---
+    room_utilization = {}
+    total_possible_slots = 5 * 8  # 5 days, 8 periods per day
+    for classroom in classrooms:
+        used_slots = len([e for e in entries if e.classroom_id == classroom.id])
+        utilization_percentage = (used_slots / total_possible_slots) * 100 if total_possible_slots else 0
+        room_utilization[classroom.room_id] = round(utilization_percentage, 1)
+
+    # --- 3. Faculty Workload ---
+    faculty_workload = {}
+    for teacher in teachers:
+        teacher_entries = [e for e in entries if e.teacher_id == teacher.id]
+        hours_per_week = len(teacher_entries)  # Each entry = 1 period
+        faculty_workload[teacher.full_name] = hours_per_week
+
+    # Render analytics template
+    return render_template(
+        'analytics.html',
+        peak_period_data=peak_period_data,
+        room_utilization=room_utilization,
+        faculty_workload=faculty_workload
+    )
+
 
 # --- Main Execution ---
 if __name__ == '__main__':
