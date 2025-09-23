@@ -6,12 +6,15 @@
 {% block content %}
 <div class="container mx-auto">
     <!-- Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        {% set level_name = 'Total Grades' if app_mode == 'school' else 'Total Semesters' %}
+        {% set section_name = 'Student Sections' if app_mode == 'school' else 'Total Branches' %}
         {% set cards = [
+            (level_name, total_levels, 'bg-purple-500'),
             ('Total Courses', total_courses, 'bg-blue-500'),
             ('Total Teachers', total_teachers, 'bg-green-500'),
             ('Total Classrooms', total_classrooms, 'bg-yellow-500'),
-            ('Student sections', total_student_sections, 'bg-red-500')
+            (section_name, total_sections, 'bg-red-500')
         ] %}
         {% for title, value, color in cards %}
         <div class="glass-card p-6 rounded-2xl shadow-lg">

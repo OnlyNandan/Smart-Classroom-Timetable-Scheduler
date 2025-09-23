@@ -1,71 +1,97 @@
-from app import app, db, User, Course, Teacher, Classroom, StudentSection, TimetableEntry, hash_password
+import os
+import sys
+from app import app, db, User, Grade, Course, Teacher, Classroom, StudentSection, TimetableEntry, hash_password, AppConfig
 
-def create_initial_data():
-    """
-    Creates tables and populates them with initial master data.
-    Safe to run multiple times (idempotent).
-    """
+def clear_data():
+    """Drops all tables, recreates them, and clears the session."""
     with app.app_context():
-        print("Creating database tables...")
+        print("Clearing all database tables...")
+        db.session.remove()
+        db.drop_all()
         db.create_all()
+        print("Tables cleared and recreated.")
+
+def create_school_data():
+    """Populates the database with sample data for a school environment."""
+    with app.app_context():
+        print("Creating school sample data...")
+
+        # --- Set App Configuration ---
+        db.session.add(AppConfig(key='app_mode', value='school'))
 
         # --- Create Users ---
-        if not User.query.filter_by(username='admin').first():
-            print("Creating default admin user...")
-            db.session.add(User(username='admin', password=hash_password('admin'), role='admin'))
+        db.session.add(User(username='admin', password=hash_password('admin'), role='admin'))
+        db.session.add(User(username='teacher_jane', password=hash_password('password'), role='teacher'))
 
-        if not User.query.filter_by(username='teacher_jane').first():
-            print("Creating default teacher user...")
-            db.session.add(User(username='teacher_jane', password=hash_password('password'), role='teacher'))
+        # --- Create Grades ---
+        grades_list = [
+            Grade(name='Grade 1', is_static_classroom=True), Grade(name='Grade 2', is_static_classroom=True),
+            Grade(name='Grade 3', is_static_classroom=True), Grade(name='Grade 4', is_static_classroom=True),
+            Grade(name='Grade 5', is_static_classroom=True), Grade(name='Grade 6', is_static_classroom=False),
+            Grade(name='Grade 7', is_static_classroom=False), Grade(name='Grade 8', is_static_classroom=False),
+            Grade(name='Grade 9', is_static_classroom=False), Grade(name='Grade 10', is_static_classroom=False),
+            Grade(name='Grade 11', is_static_classroom=False), Grade(name='Grade 12', is_static_classroom=False)
+        ]
+        db.session.add_all(grades_list)
+        db.session.commit()
+        grades = {g.name: g for g in Grade.query.all()}
 
-        # --- Create Master Data ---
-        if Course.query.count() == 0:
-            print("Populating Courses...")
-            db.session.add_all([
-                Course(course_id="CSE301", course_name="Data Structures", weekly_hours=4, reqd_lab=True, lab_hours=2),
-                Course(course_id="CSE302", course_name="DBMS", weekly_hours=4, reqd_lab=True, lab_hours=2),
-                Course(course_id="CSE303", course_name="Computer Organization", weekly_hours=3, reqd_lab=False, lab_hours=0),
-                Course(course_id="CSE304", course_name="Operating Systems", weekly_hours=4, reqd_lab=True, lab_hours=2),
-                Course(course_id="MTH201", course_name="Discrete Mathematics", weekly_hours=3, reqd_lab=False, lab_hours=0),
-            ])
+        # --- Create Courses ---
+        courses_list = [
+            Course(course_id="G1_MTH", course_name="Math Grade 1", weekly_hours=5, grade_id=grades['Grade 1'].id),
+            Course(course_id="G1_ENG", course_name="English Grade 1", weekly_hours=5, grade_id=grades['Grade 1'].id),
+            Course(course_id="G5_SCI", course_name="Science Grade 5", weekly_hours=4, grade_id=grades['Grade 5'].id),
+            Course(course_id="G5_SOC", course_name="Social Studies Grade 5", weekly_hours=3, grade_id=grades['Grade 5'].id),
+            Course(course_id="G9_ALG", course_name="Algebra", weekly_hours=5, grade_id=grades['Grade 9'].id),
+            Course(course_id="G9_PHY", course_name="Physics", weekly_hours=4, grade_id=grades['Grade 9'].id),
+            Course(course_id="G12_CAL", course_name="Calculus", weekly_hours=5, grade_id=grades['Grade 12'].id),
+            Course(course_id="G12_LIT", course_name="Literature", weekly_hours=4, grade_id=grades['Grade 12'].id),
+        ]
+        db.session.add_all(courses_list)
+        db.session.commit()
+        courses = {c.course_id: c for c in Course.query.all()}
 
-        if Teacher.query.count() == 0:
-            print("Populating Teachers...")
-            db.session.add_all([
-                Teacher(teacher_id="T101", teacher_name="Dr. Ramesh Kumar", handling_subject="CSE301", max_hours_week=12),
-                Teacher(teacher_id="T102", teacher_name="Prof. Meena", handling_subject="CSE302", max_hours_week=12),
-                Teacher(teacher_id="T103", teacher_name="Dr. Ajay Nair", handling_subject="CSE303", max_hours_week=10),
-                Teacher(teacher_id="T104", teacher_name="Prof. Kavita Rao", handling_subject="CSE304", max_hours_week=12),
-                Teacher(teacher_id="T105", teacher_name="Dr. Sunil Verma", handling_subject="MTH201", max_hours_week=8),
-            ])
+        # --- Create Teachers ---
+        t1 = Teacher(teacher_id="T101", teacher_name="Alice Johnson", max_hours_week=20)
+        t1.grades = [grades['Grade 1'], grades['Grade 2'], grades['Grade 3']]
+        t1.courses = [courses['G1_MTH'], courses['G1_ENG']]
+        
+        t2 = Teacher(teacher_id="T102", teacher_name="Bob Williams", max_hours_week=18)
+        t2.grades = [grades['Grade 4'], grades['Grade 5']]
+        t2.courses = [courses['G5_SCI'], courses['G5_SOC']]
 
-        if Classroom.query.count() == 0:
-            print("Populating Classrooms...")
-            db.session.add_all([
-                Classroom(room_id="R101", type="Classroom", capacity=60),
-                Classroom(room_id="R102", type="Classroom", capacity=60),
-                Classroom(room_id="LabC1", type="Lab", capacity=30),
-                Classroom(room_id="LabD2", type="Lab", capacity=30),
-            ])
+        t3 = Teacher(teacher_id="T103", teacher_name="Charles Brown", max_hours_week=15)
+        t3.grades = [grades['Grade 9'], grades['Grade 10']]
+        t3.courses = [courses['G9_ALG'], courses['G9_PHY']]
+        
+        t4 = Teacher(teacher_id="T104", teacher_name="Diana Miller", max_hours_week=12)
+        t4.grades = [grades['Grade 11'], grades['Grade 12']]
+        t4.courses = [courses['G12_CAL'], courses['G12_LIT']]
+        db.session.add_all([t1, t2, t3, t4])
 
-        if StudentSection.query.count() == 0:
-            print("Populating Student Sections...")
-            db.session.add_all([
-                StudentSection(section_id="SEC3A", no_of_students=55, assigned_classroom="R101"),
-                StudentSection(section_id="SEC3B", no_of_students=50, assigned_classroom="R102"),
-            ])
+        # --- Create Classrooms ---
+        db.session.add_all([
+            Classroom(room_id="R101", type="Classroom", capacity=30), Classroom(room_id="R102", type="Classroom", capacity=30),
+            Classroom(room_id="R201", type="Classroom", capacity=35), Classroom(room_id="R202", type="Classroom", capacity=35),
+            Classroom(room_id="SciLabA", type="Lab", capacity=40), Classroom(room_id="SciLabB", type="Lab", capacity=40),
+        ])
 
-        # Clear any old timetable data
-        if TimetableEntry.query.count() > 0:
-            print("Clearing old timetable entries...")
-            db.session.query(TimetableEntry).delete()
-
-        try:
-            db.session.commit()
-            print("✅ Database initialization complete.")
-        except Exception as e:
-            db.session.rollback()
-            print(f"❌ An error occurred: {e}")
+        # --- Create Student Sections ---
+        db.session.add_all([
+            StudentSection(section_id="G1A", no_of_students=28, grade_id=grades['Grade 1'].id, assigned_classroom_id="R101"),
+            StudentSection(section_id="G5B", no_of_students=32, grade_id=grades['Grade 5'].id, assigned_classroom_id="R201"),
+            StudentSection(section_id="G9A", no_of_students=30, grade_id=grades['Grade 9'].id),
+            StudentSection(section_id="G12C", no_of_students=25, grade_id=grades['Grade 12'].id),
+        ])
+        
+        db.session.commit()
+        print("✅ School sample data created successfully.")
 
 if __name__ == '__main__':
-    create_initial_data()
+    if len(sys.argv) > 1 and sys.argv[1] == 'clear':
+        clear_data()
+    else:
+        # Default action: clear everything and set up with school data.
+        clear_data()
+        create_school_data()
+

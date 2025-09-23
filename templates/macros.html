@@ -2,7 +2,20 @@
 <div>
     <label for="{{ name }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ label }}</label>
     <input type="{{ type }}" id="{{ name }}" name="{{ name }}" value="{{ value }}" {% if required %}required{% endif %}
-           class="mt-1 block w-full rounded-lg bg-white/50 dark:bg-gray-900/50 border-2 border-purple-400 dark:border-purple-500 shadow-sm focus:border-purple-500 focus:ring focus:ring-purple-500 focus:ring-opacity-50 transition">
+           class="mt-1 block w-full px-3 py-2 text-base text-gray-900 dark:text-white placeholder-gray-500 border border-gray-300/70 dark:border-gray-600/70 rounded-lg shadow-sm bg-white/50 dark:bg-gray-900/50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition">
+</div>
+{% endmacro %}
+
+{% macro form_select(name, label, options, id_field, name_field, required=False) %}
+<div>
+    <label for="{{ name }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ label }}</label>
+    <select id="{{ name }}" name="{{ name }}" {% if required %}required{% endif %}
+            class="mt-1 block w-full pl-3 pr-10 py-2 text-base text-gray-900 dark:text-white border border-gray-300/70 dark:border-gray-600/70 rounded-lg shadow-sm bg-white/50 dark:bg-gray-900/50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition">
+        <option value="">-- Select --</option>
+        {% for option in options %}
+            <option value="{{ option[id_field] }}">{{ option[name_field] }}</option>
+        {% endfor %}
+    </select>
 </div>
 {% endmacro %}
 
@@ -57,4 +70,3 @@
     </table>
 </div>
 {% endmacro %}
-

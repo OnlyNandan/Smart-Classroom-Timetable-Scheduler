@@ -56,12 +56,16 @@
                 <h1 class="text-2xl font-bold text-purple-700 dark:text-purple-400">Scheduler AI</h1>
             </div>
             <nav class="mt-4 px-4 space-y-2">
+                {% set level_name = 'Grades' if app_mode == 'school' else 'Semesters' %}
+                {% set section_name = 'Student Sections' if app_mode == 'school' else 'Branches' %}
+                
                 {% set nav_items = [
                     ('dashboard', 'Dashboard', '<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />'),
+                    ('manage_levels', level_name, '<path stroke-linecap="round" stroke-linejoin="round" d="M12 12.75c1.148 0 2.278.08 3.383.237 1.037.148 1.875 1.05 1.875 2.108V18.75c0 1.104-.896 2-2 2H8.742c-1.104 0-2-.896-2-2v-3.655c0-1.058.838-1.96 1.875-2.108C9.722 12.83 10.852 12.75 12 12.75z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 12.75c-1.72 0-3.303-.42-4.646-1.172C6.23 11.02 6 10.373 6 9.75V6.75c0-.985.656-1.855 1.591-2.122C8.58 4.37 10.21 4.125 12 4.125c1.79 0 3.42.245 4.409.503C17.344 4.895 18 5.765 18 6.75v3c0 .623-.23 1.27-.654 1.828C16.003 12.33 14.42 12.75 12 12.75z" />'),
                     ('manage_courses', 'Courses', '<path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />'),
                     ('manage_teachers', 'Teachers', '<path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-4.663M12 12A3.75 3.75 0 1012 4.5a3.75 3.75 0 000 7.5z" />'),
                     ('manage_classrooms', 'Classrooms', '<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h6.75M9 11.25h6.75M9 15.75h6.75M9 20.25h6.75" />'),
-                    ('manage_student_sections', 'Student sections', '<path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m-7.5-2.928A3 3 0 017.5 12.5m3 14.25v-2.545m0 0a3 3 0 01-3-3m3 3a3 3 0 00-3-3m-3.75 6.118a2.986 2.986 0 01-3.75 0M8.25 9.75A3.75 3.75 0 0112 6m3.75 3.75a3.75 3.75 0 01-7.5 0" />'),
+                    ('manage_student_sections', section_name, '<path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m-7.5-2.928A3 3 0 017.5 12.5m3 14.25v-2.545m0 0a3 3 0 01-3-3m3 3a3 3 0 00-3-3m-3.75 6.118a2.986 2.986 0 01-3.75 0M8.25 9.75A3.75 3.75 0 0112 6m3.75 3.75a3.75 3.75 0 01-7.5 0" />'),
                     ('view_timetable', 'Timetable', '<path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0h18M12 12.75h.008v.008H12v-.008z" />'),
                     ('analytics', 'Analytics', '<path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 100 15 7.5 7.5 0 000-15z" /><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />')
                 ] %}
@@ -122,3 +126,4 @@ themeToggleBtn.addEventListener('click', () => {
 {% block scripts %}{% endblock %}
 </body>
 </html>
+
