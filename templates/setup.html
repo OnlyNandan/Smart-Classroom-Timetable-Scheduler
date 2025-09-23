@@ -1,44 +1,321 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>First-Time Setup - Scheduler AI</title>
+    <title>Setup - Scheduler AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1);
+        }
         .bg-gradient-body {
             background-color: #020617;
             background-image: radial-gradient(at 2% 5%, rgb(30, 27, 44) 0px, transparent 50%),
                               radial-gradient(at 98% 98%, rgb(20, 32, 53) 0px, transparent 50%);
         }
-        .glass-card {
-            background: rgba(30, 41, 59, 0.4);
-            -webkit-backdrop-filter: blur(12px);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        .form-section { display: none; animation: fadeIn 0.5s ease-in-out; }
+        .form-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .step-indicator { transition: all 0.3s ease-in-out; }
+        .input-base {
+            background-color: rgba(17, 24, 39, 0.5); border: 1px solid #4b5563;
+            color: #d1d5db; padding: 0.5rem 0.75rem; border-radius: 0.5rem; width: 100%;
+            transition: all 0.2s ease;
         }
+        .input-base:focus {
+            outline: none; ring: 2px; ring-offset: 2px; ring-offset-color: #111827;
+            border-color: #8b5cf6; ring-color: #8b5cf6;
+        }
+        .btn-secondary {
+             background-color: #4b5563; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600;
+             transition: background-color 0.2s ease;
+        }
+        .btn-secondary:hover { background-color: #6b7280; }
+        .btn-remove {
+            background-color: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .btn-remove:hover { background-color: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.5); }
     </style>
 </head>
-<body class="bg-gradient-body text-gray-200 flex items-center justify-center min-h-screen p-4">
-    <div class="w-full max-w-2xl p-8 space-y-8 glass-card rounded-2xl shadow-2xl text-center">
-        <h1 class="text-4xl font-bold text-white">Welcome to Scheduler AI</h1>
-        <p class="text-lg text-gray-400">To get started, please choose the type of institution you will be scheduling for. This will tailor the application's terminology and setup.</p>
-        
-        <form method="POST" action="{{ url_for('setup') }}" class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-            <button type="submit" name="mode" value="school" class="group relative p-6 rounded-xl border border-purple-500/30 hover:bg-purple-900/40 transition-all duration-300">
-                <h2 class="text-2xl font-semibold text-purple-300">School</h2>
-                <p class="mt-2 text-gray-400">Manage Grades, Classes, and Subjects. Ideal for K-12 institutions.</p>
-            </button>
+<body class="bg-gradient-body text-gray-100 min-h-screen p-4 sm:p-6 lg:p-8 flex items-center justify-center">
+    <div class="w-full max-w-5xl mx-auto p-8 space-y-6 glass-card rounded-2xl shadow-2xl">
+        <h1 class="text-3xl font-bold text-center text-white">Scheduler AI Initial Setup</h1>
+        <div class="flex justify-center space-x-2 sm:space-x-4 p-4 text-sm sm:text-base">
+            <div id="step-1-indicator" class="step-indicator border-b-2 py-2 px-3 sm:px-4">Step 1: Type</div>
+            <div id="step-2-indicator" class="step-indicator border-b-2 py-2 px-3 sm:px-4">Step 2: Details</div>
+            <div id="step-3-indicator" class="step-indicator border-b-2 py-2 px-3 sm:px-4">Step 3: Structure</div>
+            <div id="step-4-indicator" class="step-indicator border-b-2 py-2 px-3 sm:px-4">Step 4: Finalize</div>
+        </div>
+
+        <form method="POST" action="{{ url_for('setup') }}" id="setup-form" class="space-y-8">
+            <!-- Step 1: Institution Type -->
+            <div id="step-1" class="form-section">
+                <h2 class="text-2xl font-semibold mb-4 text-center text-white">Select Institution Type</h2>
+                <div class="flex justify-center gap-6">
+                    <label class="glass-card p-6 rounded-lg cursor-pointer hover:border-purple-500 border border-transparent transition w-64 text-center">
+                        <input type="radio" name="mode" value="school" class="hidden" checked>
+                        <span class="text-5xl">🏫</span>
+                        <h3 class="text-xl font-bold mt-4">School</h3>
+                        <p class="text-gray-400">Grades, Classes, Streams</p>
+                    </label>
+                    <label class="glass-card p-6 rounded-lg cursor-pointer hover:border-purple-500 border border-transparent transition w-64 text-center">
+                        <input type="radio" name="mode" value="college" class="hidden">
+                        <span class="text-5xl">🎓</span>
+                        <h3 class="text-xl font-bold mt-4">College</h3>
+                        <p class="text-gray-400">Semesters, Branches, Courses</p>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Step 2: Basic Details -->
+            <div id="step-2" class="form-section">
+                <h2 class="text-2xl font-semibold mb-6 text-center text-white">Institution Details</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="working_days" class="block text-sm font-medium text-gray-300">Working Days Per Week</label>
+                        <select id="working_days" name="working_days" class="input-base mt-1">
+                            <option value="5">Monday – Friday</option>
+                            <option value="6">Monday – Saturday</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="period_duration" class="text-sm font-medium text-gray-300">Default Period Duration (minutes)</label>
+                        <input id="period_duration" name="period_duration" type="number" required value="45" class="input-base mt-1">
+                    </div>
+                    <div>
+                        <label for="start_time" class="text-sm font-medium text-gray-300">School/College Start Time</label>
+                        <input id="start_time" name="start_time" type="time" required value="08:30" class="input-base mt-1">
+                    </div>
+                    <div>
+                        <label for="end_time" class="text-sm font-medium text-gray-300">School/College End Time</label>
+                        <input id="end_time" name="end_time" type="time" required value="15:30" class="input-base mt-1">
+                    </div>
+                </div>
+                <div id="breaks-container" class="mt-8">
+                    <h3 class="text-lg font-medium text-white mb-2">Breaks</h3>
+                    <div id="breaks-list"></div>
+                    <button type="button" id="add-break-btn" class="mt-2 text-sm text-purple-400 hover:underline font-medium">+ Add Break</button>
+                </div>
+            </div>
+
+            <!-- Step 3: Grade/Semester Structure -->
+            <div id="step-3" class="form-section">
+                <h2 id="structure-title" class="text-2xl font-semibold mb-6 text-center text-white">Define School Structure</h2>
+                <div id="structure-container" class="space-y-6"></div>
+                <button type="button" id="add-group-btn" class="mt-4 btn-secondary">+ Add Group</button>
+            </div>
             
-            <button type="submit" name="mode" value="college" class="group relative p-6 rounded-xl border border-gray-500/30 hover:bg-gray-800/40 transition-all duration-300 cursor-not-allowed" disabled>
-                <span class="absolute top-2 right-2 text-xs bg-yellow-500 text-yellow-900 font-bold py-1 px-2 rounded-full">Coming Soon</span>
-                <h2 class="text-2xl font-semibold text-gray-500">College</h2>
-                <p class="mt-2 text-gray-600">Manage Semesters, Branches, and Electives. Designed for higher education.</p>
-            </button>
+            <!-- Step 4: Finalize / Admin Account -->
+            <div id="step-4" class="form-section">
+                 <h2 class="text-2xl font-semibold mb-4 text-center text-white">Create Your Admin Account</h2>
+                 <div class="max-w-md mx-auto">
+                    <div>
+                        <label for="username" class="text-sm font-medium text-gray-300">Admin Username</label>
+                        <input id="username" name="username" type="text" required class="input-base mt-1">
+                    </div>
+                    <div class="mt-4">
+                        <label for="password" class="text-sm font-medium text-gray-300">Admin Password</label>
+                        <input id="password" name="password" type="password" required class="input-base mt-1">
+                    </div>
+                 </div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="flex justify-between pt-5">
+                <button type="button" id="prev-btn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg transition hidden">Back</button>
+                <button type="button" id="next-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg transition">Next</button>
+                <button type="submit" id="submit-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition hidden">Complete Setup</button>
+            </div>
         </form>
-        <p class="text-sm text-gray-500 pt-4">This choice is permanent and will reset the database. You are logged in as <strong class="text-gray-300">{{ session.username }}</strong>.</p>
     </div>
+
+<template id="break-template">
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-3 items-end break-item">
+        <div>
+            <label class="text-sm font-medium text-gray-300">Break Name</label>
+            <input name="break_names" type="text" placeholder="e.g., Lunch" required class="input-base mt-1">
+        </div>
+        <div>
+            <label class="text-sm font-medium text-gray-300">Start Time</label>
+            <input name="break_starts" type="time" required class="input-base mt-1">
+        </div>
+        <div>
+            <label class="text-sm font-medium text-gray-300">End Time</label>
+            <input name="break_ends" type="time" required class="input-base mt-1">
+        </div>
+        <button type="button" class="btn-remove remove-btn">Remove</button>
+    </div>
+</template>
+
+<template id="group-template">
+    <div class="glass-card p-4 rounded-lg group-item">
+        <input type="hidden" name="group_indices">
+        <div class="flex justify-between items-center">
+            <input name="group_names" placeholder="Group Name (e.g., Primary School)" required class="input-base text-lg font-bold w-1/2">
+            <button type="button" class="btn-remove remove-btn">Remove Group</button>
+        </div>
+        <div class="pl-4 mt-4 space-y-2 grades-container"></div>
+        <button type="button" class="add-grade-btn mt-2 ml-4 text-sm text-purple-400 hover:underline font-medium">+ Add Grade</button>
+        <div class="streams-section mt-4 pl-4 hidden">
+             <h4 class="text-md font-semibold text-gray-300">Streams</h4>
+             <div class="streams-container mt-2 space-y-2"></div>
+             <button type="button" class="add-stream-btn mt-2 text-sm text-purple-400 hover:underline font-medium">+ Add Stream</button>
+        </div>
+    </div>
+</template>
+
+<template id="grade-template">
+     <div class="flex items-center gap-4 grade-item">
+        <input name="grade_names" placeholder="Grade Name (e.g., Grade 1)" required class="input-base w-1/3">
+        <div class="flex items-center gap-2">
+            <label class="text-sm">Early Dismissal?</label>
+            <input type="checkbox" class="early-dismissal-toggle h-4 w-4 rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-600">
+            <input name="grade_end_times" type="time" class="input-base hidden w-32">
+        </div>
+        <button type="button" class="btn-remove remove-btn text-xs">X</button>
+    </div>
+</template>
+
+<template id="stream-template">
+    <div class="glass-card p-3 rounded-md stream-item">
+        <input type="hidden" name="stream_indices">
+        <div class="flex justify-between items-center">
+            <input name="stream_names" placeholder="Stream Name (e.g., Science)" required class="input-base font-semibold w-1/2">
+            <button type="button" class="btn-remove remove-btn">X</button>
+        </div>
+        <div class="subjects-container mt-3 pl-4 space-y-2"></div>
+        <button type="button" class="add-subject-btn mt-2 ml-4 text-sm text-purple-400 hover:underline font-medium">+ Add Subject</button>
+    </div>
+</template>
+
+<template id="subject-template">
+    <div class="flex items-center gap-2 subject-item">
+        <input name="subject_codes" placeholder="Code" class="input-base w-24">
+        <input name="subject_names" placeholder="Subject Name" required class="input-base flex-grow">
+        <input name="subject_hours" type="number" placeholder="Hrs/Wk" required class="input-base w-24">
+        <label class="text-sm flex items-center gap-1"><input name="subject_is_elective" type="checkbox" class="h-4 w-4 rounded bg-gray-700 text-purple-600"> Elective</label>
+        <button type="button" class="btn-remove remove-btn text-xs">X</button>
+    </div>
+</template>
+
+
+<script>
+// --- WIZARD NAVIGATION ---
+const steps = ['step-1', 'step-2', 'step-3', 'step-4'];
+let currentStep = 0;
+const nextBtn = document.getElementById('next-btn');
+const prevBtn = document.getElementById('prev-btn');
+const submitBtn = document.getElementById('submit-btn');
+
+function updateStepVisibility() {
+    steps.forEach((stepId, index) => {
+        const section = document.getElementById(stepId);
+        const indicator = document.getElementById(`${stepId}-indicator`);
+        if (index === currentStep) {
+            section.classList.add('active');
+            indicator.classList.remove('border-gray-600', 'text-gray-500');
+            indicator.classList.add('border-purple-500', 'text-purple-400');
+        } else {
+            section.classList.remove('active');
+            indicator.classList.add('border-gray-600', 'text-gray-500');
+            indicator.classList.remove('border-purple-500', 'text-purple-400');
+        }
+    });
+    prevBtn.classList.toggle('hidden', currentStep === 0);
+    nextBtn.classList.toggle('hidden', currentStep === steps.length - 1);
+    submitBtn.classList.toggle('hidden', currentStep !== steps.length - 1);
+}
+nextBtn.addEventListener('click', () => { if (currentStep < steps.length - 1) { currentStep++; updateStepVisibility(); } });
+prevBtn.addEventListener('click', () => { if (currentStep > 0) { currentStep--; updateStepVisibility(); } });
+
+// --- DYNAMIC FORM LOGIC ---
+let groupCounter = 0;
+let streamCounter = 0;
+
+document.getElementById('setup-form').addEventListener('click', (e) => {
+    if (e.target.classList.contains('remove-btn')) {
+        e.target.closest('.break-item, .group-item, .grade-item, .stream-item, .subject-item').remove();
+    }
+});
+
+const breaksList = document.getElementById('breaks-list');
+const breakTemplate = document.getElementById('break-template');
+document.getElementById('add-break-btn').addEventListener('click', () => {
+    breaksList.appendChild(breakTemplate.content.cloneNode(true));
+});
+
+const structureContainer = document.getElementById('structure-container');
+document.getElementById('add-group-btn').addEventListener('click', () => {
+    const clone = document.getElementById('group-template').content.cloneNode(true);
+    const groupItem = clone.querySelector('.group-item');
+    groupItem.querySelector('[name="group_indices"]').value = groupCounter;
+    
+    // Check mode and show streams section if applicable (e.g. for High School)
+    // This can be made more dynamic based on group name
+    const groupNameInput = groupItem.querySelector('[name="group_names"]');
+    groupNameInput.addEventListener('input', (e) => {
+        const isHighSchool = e.target.value.toLowerCase().includes('high');
+        groupItem.querySelector('.streams-section').classList.toggle('hidden', !isHighSchool);
+    });
+
+    clone.querySelector('.add-grade-btn').addEventListener('click', () => addGrade(groupItem, groupCounter));
+    clone.querySelector('.add-stream-btn').addEventListener('click', () => addStream(groupItem, groupCounter));
+    structureContainer.appendChild(clone);
+    groupCounter++;
+});
+
+function addGrade(groupItem, groupIndex) {
+    const container = groupItem.querySelector('.grades-container');
+    const clone = document.getElementById('grade-template').content.cloneNode(true);
+    clone.querySelector('[name="grade_names"]').name = `group_${groupIndex}_grade_names`;
+    const endTimeInput = clone.querySelector('[name="grade_end_times"]');
+    endTimeInput.name = `group_${groupIndex}_grade_end_times`;
+    clone.querySelector('.early-dismissal-toggle').addEventListener('change', (e) => {
+        endTimeInput.classList.toggle('hidden', !e.target.checked);
+    });
+    container.appendChild(clone);
+}
+
+function addStream(groupItem, groupIndex) {
+    const container = groupItem.querySelector('.streams-container');
+    const clone = document.getElementById('stream-template').content.cloneNode(true);
+    const streamItem = clone.querySelector('.stream-item');
+    
+    // Create a unique index for the stream within its group
+    const streamIndex = `g${groupIndex}s${streamCounter}`;
+    streamItem.querySelector('[name="stream_indices"]').value = streamIndex;
+    streamItem.querySelector('[name="stream_names"]').name = `group_${groupIndex}_stream_names`;
+    
+    clone.querySelector('.add-subject-btn').addEventListener('click', () => addSubject(streamItem, streamIndex));
+    
+    container.appendChild(clone);
+    streamCounter++;
+}
+
+function addSubject(streamItem, streamIndex) {
+    const container = streamItem.querySelector('.subjects-container');
+    const clone = document.getElementById('subject-template').content.cloneNode(true);
+    
+    // Mangle names to be parsable on the backend
+    clone.querySelector('[name="subject_codes"]').name = `stream_${streamIndex}_subject_codes`;
+    clone.querySelector('[name="subject_names"]').name = `stream_${streamIndex}_subject_names`;
+    clone.querySelector('[name="subject_hours"]').name = `stream_${streamIndex}_subject_hours`;
+    clone.querySelector('[name="subject_is_elective"]').name = `stream_${streamIndex}_subject_is_elective`;
+    clone.querySelector('[name="subject_is_elective"]').value = streamIndex; // Pass stream index
+
+    container.appendChild(clone);
+}
+
+
+updateStepVisibility();
+// Add a default break on page load
+breaksList.appendChild(breakTemplate.content.cloneNode(true));
+</script>
 </body>
 </html>
+

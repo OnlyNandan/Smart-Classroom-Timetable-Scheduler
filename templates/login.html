@@ -39,11 +39,18 @@
         <h1 class="text-3xl font-bold text-center text-gray-800 dark:text-white">Scheduler AI</h1>
         <p class="text-center text-gray-600 dark:text-gray-400">Sign in to orchestrate your schedule</p>
 
-        {% if error %}
-            <div class="bg-red-500/20 border border-red-500/30 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg relative text-center" role="alert">
-                <span>{{ error }}</span>
-            </div>
-        {% endif %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="p-4 rounded-lg text-center
+                {% if category == 'success' %} bg-green-500/20 border border-green-500/30 text-green-700 dark:text-green-300 {% endif %}
+                {% if category == 'error' %} bg-red-500/20 border border-red-500/30 text-red-700 dark:text-red-300 {% endif %}
+              " role="alert">
+                {{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
 
         <form method="POST" action="{{ url_for('login') }}" class="space-y-6">
             <div>
@@ -70,4 +77,3 @@
     </script>
 </body>
 </html>
-
