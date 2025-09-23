@@ -2,45 +2,44 @@
 
 {% block title %}Timetable Management{% endblock %}
 
+{% block header %}
+<h1 class="text-3xl font-bold text-gray-200">Timetable Management</h1>
+<p class="text-gray-400 mt-1">Manage and generate timetables for all classes, grades, and streams</p>
+{% endblock %}
+
 {% block content %}
-<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-    <div class="max-w-7xl mx-auto">
-        <!-- Header -->
-        <div class="mb-8">
-            <h1 class="text-4xl font-bold text-gray-800 mb-2">Timetable Management</h1>
-            <p class="text-gray-600">Manage and generate timetables for all classes, grades, and streams</p>
-        </div>
+<div class="space-y-6">
 
-        <!-- Controls Panel -->
-        <div class="glass-card mb-6 p-6">
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <div class="flex flex-wrap items-center gap-4">
-                    <!-- Filter Controls -->
-                    <div class="flex items-center gap-2">
-                        <label class="text-sm font-medium text-gray-700">View:</label>
-                        <select id="view-mode" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            <option value="all">All Classes</option>
-                            <option value="section">By Section</option>
-                            <option value="teacher">By Teacher</option>
-                            <option value="classroom">By Classroom</option>
-                        </select>
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        <label class="text-sm font-medium text-gray-700">Filter:</label>
-                        <select id="filter-select" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            <option value="">Select to filter...</option>
-                        </select>
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        <label class="text-sm font-medium text-gray-700">Week:</label>
-                        <select id="week-select" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            <option value="current">Current Week</option>
-                            <option value="next">Next Week</option>
-                        </select>
-                    </div>
+    <!-- Controls Panel -->
+    <div class="glass-card p-6">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex flex-wrap items-center gap-4">
+                <!-- Filter Controls -->
+                <div class="flex items-center gap-2">
+                    <label class="text-sm font-medium text-gray-300">View:</label>
+                    <select id="view-mode" class="px-3 py-2 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-800 text-gray-100">
+                        <option value="all">All Classes</option>
+                        <option value="section">By Section</option>
+                        <option value="teacher">By Teacher</option>
+                        <option value="classroom">By Classroom</option>
+                    </select>
                 </div>
+
+                <div class="flex items-center gap-2">
+                    <label class="text-sm font-medium text-gray-300">Filter:</label>
+                    <select id="filter-select" class="px-3 py-2 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-800 text-gray-100">
+                        <option value="">Select to filter...</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <label class="text-sm font-medium text-gray-300">Week:</label>
+                    <select id="week-select" class="px-3 py-2 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-800 text-gray-100">
+                        <option value="current">Current Week</option>
+                        <option value="next">Next Week</option>
+                    </select>
+                </div>
+            </div>
 
                 <div class="flex items-center gap-3">
                     <button id="generate-btn" class="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-2 rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 flex items-center gap-2">
@@ -60,108 +59,107 @@
             </div>
         </div>
 
-        <!-- Timetable Display -->
+    <!-- Timetable Display -->
+    <div class="glass-card p-6">
+        <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-2xl font-semibold text-gray-200">Timetable</h2>
+            <div class="flex items-center gap-2 text-sm text-gray-400">
+                <span id="last-generated">Last generated: Never</span>
+                <span id="generation-status" class="px-2 py-1 rounded-full text-xs"></span>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading-state" class="hidden text-center py-12">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p class="mt-2 text-gray-400">Loading timetable...</p>
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="hidden text-center py-12">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-100">No timetable data</h3>
+            <p class="mt-1 text-sm text-gray-400">Generate a timetable to get started.</p>
+            <div class="mt-6">
+                <button id="generate-empty-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                    Generate Timetable
+                </button>
+            </div>
+        </div>
+
+        <!-- Timetable Grid -->
+        <div id="timetable-container" class="hidden">
+            <div class="overflow-x-auto">
+                <table id="timetable-table" class="w-full border-collapse">
+                    <thead>
+                        <tr id="table-header" class="bg-gray-800">
+                            <!-- Headers will be populated by JavaScript -->
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <!-- Rows will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Panel -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div class="glass-card p-6">
-            <div class="mb-4 flex items-center justify-between">
-                <h2 class="text-2xl font-semibold text-gray-800">Timetable</h2>
-                <div class="flex items-center gap-2 text-sm text-gray-600">
-                    <span id="last-generated">Last generated: Never</span>
-                    <span id="generation-status" class="px-2 py-1 rounded-full text-xs"></span>
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-blue-900 text-blue-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                    </svg>
                 </div>
-            </div>
-
-            <!-- Loading State -->
-            <div id="loading-state" class="hidden text-center py-12">
-                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p class="mt-2 text-gray-600">Loading timetable...</p>
-            </div>
-
-            <!-- Empty State -->
-            <div id="empty-state" class="hidden text-center py-12">
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">No timetable data</h3>
-                <p class="mt-1 text-sm text-gray-500">Generate a timetable to get started.</p>
-                <div class="mt-6">
-                    <button id="generate-empty-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                        Generate Timetable
-                    </button>
-                </div>
-            </div>
-
-            <!-- Timetable Grid -->
-            <div id="timetable-container" class="hidden">
-                <div class="overflow-x-auto">
-                    <table id="timetable-table" class="w-full border-collapse">
-                        <thead>
-                            <tr id="table-header" class="bg-gray-50">
-                                <!-- Headers will be populated by JavaScript -->
-                            </tr>
-                        </thead>
-                        <tbody id="table-body">
-                            <!-- Rows will be populated by JavaScript -->
-                        </tbody>
-                    </table>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-400">Total Classes</p>
+                    <p id="total-classes" class="text-2xl font-semibold text-gray-100">0</p>
                 </div>
             </div>
         </div>
 
-        <!-- Statistics Panel -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
-            <div class="glass-card p-6">
-                <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-blue-100 text-blue-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
-                        </svg>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-600">Total Classes</p>
-                        <p id="total-classes" class="text-2xl font-semibold text-gray-900">0</p>
-                    </div>
+        <div class="glass-card p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-green-900 text-green-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-400">Scheduled</p>
+                    <p id="scheduled-classes" class="text-2xl font-semibold text-gray-100">0</p>
                 </div>
             </div>
+        </div>
 
-            <div class="glass-card p-6">
-                <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-green-100 text-green-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-600">Scheduled</p>
-                        <p id="scheduled-classes" class="text-2xl font-semibold text-gray-900">0</p>
-                    </div>
+        <div class="glass-card p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-yellow-900 text-yellow-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-400">Conflicts</p>
+                    <p id="conflicts" class="text-2xl font-semibold text-gray-100">0</p>
                 </div>
             </div>
+        </div>
 
-            <div class="glass-card p-6">
-                <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-600">Conflicts</p>
-                        <p id="conflicts" class="text-2xl font-semibold text-gray-900">0</p>
-                    </div>
+        <div class="glass-card p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-purple-900 text-purple-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
                 </div>
-            </div>
-
-            <div class="glass-card p-6">
-                <div class="flex items-center">
-                    <div class="p-3 rounded-full bg-purple-100 text-purple-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                        </svg>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-600">Efficiency</p>
-                        <p id="efficiency" class="text-2xl font-semibold text-gray-900">0%</p>
-                    </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-400">Efficiency</p>
+                    <p id="efficiency" class="text-2xl font-semibold text-gray-100">0%</p>
                 </div>
             </div>
         </div>
@@ -171,19 +169,19 @@
 <!-- Generation Modal -->
 <div id="generation-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
     <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-white rounded-lg max-w-md w-full p-6">
+        <div class="bg-gray-800 rounded-lg max-w-md w-full p-6">
             <div class="text-center">
-                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
-                    <svg class="h-6 w-6 text-blue-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-900 mb-4">
+                    <svg class="h-6 w-6 text-blue-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                     </svg>
                 </div>
-                <h3 class="text-lg font-medium text-gray-900 mb-2">Generating Timetable</h3>
-                <p class="text-sm text-gray-500 mb-4">Please wait while AI generates the optimal timetable...</p>
-                <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
+                <h3 class="text-lg font-medium text-gray-100 mb-2">Generating Timetable</h3>
+                <p class="text-sm text-gray-400 mb-4">Please wait while AI generates the optimal timetable...</p>
+                <div class="w-full bg-gray-700 rounded-full h-2 mb-4">
                     <div id="progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
                 </div>
-                <p id="progress-text" class="text-xs text-gray-500">Initializing...</p>
+                <p id="progress-text" class="text-xs text-gray-400">Initializing...</p>
             </div>
         </div>
     </div>
@@ -191,11 +189,11 @@
 
 <!-- Toast Notification -->
 <div id="toast" class="fixed top-5 right-5 z-50 hidden">
-    <div class="bg-white rounded-lg shadow-lg border-l-4 p-4 max-w-sm">
+    <div class="bg-gray-800 rounded-lg shadow-lg border-l-4 p-4 max-w-sm">
         <div class="flex items-center">
             <div id="toast-icon" class="flex-shrink-0"></div>
             <div class="ml-3">
-                <p id="toast-message" class="text-sm font-medium text-gray-900"></p>
+                <p id="toast-message" class="text-sm font-medium text-gray-100"></p>
             </div>
         </div>
     </div>
