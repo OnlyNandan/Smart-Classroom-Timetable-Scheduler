@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Teachers{% endblock %}
+
+{% block header %}
+    <div class="flex-grow">
+        <h2 class="text-2xl font-bold text-white">Manage Teachers</h2>
+        <p class="text-sm text-gray-400">Onboard and manage your teaching staff.</p>
+    </div>
+{% endblock %}
+
+{% block content %}
+<div class="glass-card rounded-2xl p-6 h-[calc(100vh-10rem)] flex flex-col">
+    <!-- Header -->
+    <div class="flex-shrink-0 flex flex-col md:flex-row justify-between items-center pb-4 mb-4 border-b border-gray-700 gap-4">
+        <div class="w-full md:w-auto flex-grow">
+            <input type="text" id="search-input" class="input-base text-sm" placeholder="Search by name or subject...">
+        </div>
+        <button id="add-teacher-btn" class="btn-primary w-full md:w-auto">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Add New Teacher
+        </button>
+    </div>
+
+    <!-- Table View -->
+    <div id="table-container" class="flex-grow overflow-auto">
+        <table id="teachers-table" class="w-full text-sm text-left text-gray-300">
+            <thead class="text-xs text-gray-400 uppercase bg-gray-800/50 sticky top-0">
+                <tr>
+                    <th scope="col" class="px-6 py-3">Full Name</th>
+                    <th scope="col" class="px-6 py-3">Teaches</th>
+                    <th scope="col" class="px-6 py-3">Max Weekly Hours</th>
+                    <th scope="col" class="px-6 py-3"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- JS will generate rows -->
+                 <tr id="placeholder-row" class="hidden">
+                    <td colspan="4" class="text-center py-10 text-gray-500">
+                        <svg class="mx-auto h-12 w-12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-4.663M12 12A3.75 3.75 0 1012 4.5a3.75 3.75 0 000 7.5z" /></svg>
+                        <p class="mt-4 font-semibold">No teachers found.</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<!-- ====== MODALS & TEMPLATES ====== -->
+<div id="form-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+    <div class="glass-card rounded-lg w-full max-w-3xl transform transition-all opacity-0 -translate-y-10">
+        <form class="p-6" onsubmit="return false;">
+            <h2 class="text-2xl font-bold text-white mb-6 form-title">Add New Teacher</h2>
+            <input type="hidden" name="id">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+                <!-- Left Column: Details -->
+                <div class="space-y-4">
+                    <div><label class="block text-sm font-medium text-gray-300 mb-1">Full Name</label><input type="text" name="full_name" class="input-base" required></div>
+                    <div><label class="block text-sm font-medium text-gray-300 mb-1">Email</label><input type="email" name="email" class="input-base" required></div>
+                    <div><label class="block text-sm font-medium text-gray-300 mb-1">Username</label><input type="text" name="username" class="input-base" required></div>
+                    <div><label class="block text-sm font-medium text-gray-300 mb-1">Password</label><input type="password" name="password" class="input-base" placeholder="Leave blank to keep unchanged"></div>
+                    <div><label class="block text-sm font-medium text-gray-300 mb-1">Max Weekly Hours</label><input type="number" name="max_weekly_hours" class="input-base" required></div>
+                </div>
+
+                <!-- Right Column: Subjects -->
+                <div class="space-y-2 flex flex-col mt-4 md:mt-0">
+                     <label class="block text-sm font-medium text-gray-300 mb-1">Teachable Subjects</label>
+                     <input type="text" id="subject-search" class="input-base flex-shrink-0" placeholder="Search subjects...">
+                     <div id="subjects-container" class="flex-grow overflow-y-auto bg-gray-900/50 p-3 rounded-md border border-gray-700 min-h-[200px]">
+                        <!-- Checkboxes will be dynamically inserted here -->
+                     </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-x-3 pt-6 mt-6 border-t border-gray-700">
+                <button type="button" class="cancel-btn btn-secondary">Cancel</button>
+                <button type="submit" class="save-btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Other Modals (Toast, Confirm) -->
+<div id="toast" class="fixed top-5 right-5 bg-green-600 text-white py-2 px-5 rounded-lg shadow-lg text-sm transition-all opacity-0 transform translate-x-10 z-50" role="alert"></div>
+<div id="confirm-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
+    <div class="glass-card rounded-lg p-6 w-full max-w-sm text-center">
+        <h3 class="text-lg font-bold text-white mb-2">Are you sure?</h3>
+        <p id="confirm-text" class="text-sm text-gray-400 mb-6"></p>
+        <div class="flex justify-center gap-x-4">
+            <button id="confirm-cancel" class="btn-secondary px-6 py-2">Cancel</button>
+            <button id="confirm-delete" class="btn-danger px-6 py-2">Delete</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.input-base { background-color: rgba(31, 41, 55, 0.5); border: 1px solid #4b5563; color: #d1d5db; padding: 0.5rem 0.75rem; border-radius: 0.5rem; width: 100%; transition: all 0.2s ease; }
+.input-base:focus { outline: none; box-shadow: 0 0 0 2px #111827, 0 0 0 4px #8b5cf6; border-color: #8b5cf6; }
+.btn-primary { background-color: #7c3aed; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; } .btn-primary:hover { background-color: #8b5cf6; } .btn-primary:disabled { background-color: #4c1d95; color: #a78bfa; cursor: not-allowed; }
+.btn-secondary { background-color: #4b5563; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 500; transition: all 0.2s ease; } .btn-secondary:hover { background-color: #6b7280; }
+.btn-danger { background-color: #be123c; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s ease; } .btn-danger:hover { background-color: #e11d48; }
+.subject-tag { background-color: #4c1d95; color: #c4b5fd; font-size: 0.75rem; padding: 0.25rem 0.6rem; border-radius: 9999px; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const API_BASE_URL = '/api/staff';
+
+    // --- Element Refs ---
+    const searchInput = document.getElementById('search-input');
+    const addTeacherBtn = document.getElementById('add-teacher-btn');
+    const tableBody = document.getElementById('teachers-table').querySelector('tbody');
+    const placeholderRow = document.getElementById('placeholder-row');
+    const formModal = document.getElementById('form-modal');
+    const modalContent = formModal.querySelector('.glass-card');
+
+    // --- State ---
+    let teachers = [];
+    let allSubjects = [];
+
+    // --- API & Data ---
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+        try {
+            const options = { method, headers: { 'Content-Type': 'application/json' } };
+            if (body) options.body = JSON.stringify(body);
+            const response = await fetch(endpoint, options);
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.message || `HTTP error! status: ${response.status}`);
+            }
+            return result;
+        } catch (error) {
+            showToast(`Error: ${error.message}`, 'error');
+            return null;
+        }
+    }
+
+    async function loadInitialData() {
+        const [teachersData, subjectsData] = await Promise.all([
+            apiRequest(API_BASE_URL),
+            apiRequest(`${API_BASE_URL}/all_subjects`)
+        ]);
+        if (teachersData) teachers = teachersData.teachers;
+        if (subjectsData) allSubjects = subjectsData.subjects;
+        renderTable();
+    }
+
+    // --- Rendering & UI ---
+    function renderTable(filterText = '') {
+        tableBody.innerHTML = ''; 
+        const filteredTeachers = teachers.filter(t => 
+            t.full_name.toLowerCase().includes(filterText) ||
+            t.subjects.some(s => s.name.toLowerCase().includes(filterText))
+        );
+
+        if (filteredTeachers.length === 0) {
+            placeholderRow.classList.remove('hidden');
+            tableBody.appendChild(placeholderRow);
+        } else {
+             placeholderRow.classList.add('hidden');
+        }
+
+        filteredTeachers.forEach(teacher => {
+            const row = tableBody.insertRow();
+            row.className = 'border-b border-gray-800 hover:bg-gray-800/50';
+
+            row.innerHTML = `
+                <td class="px-6 py-4 font-medium text-white">${teacher.full_name}<br><span class="text-xs text-gray-400">${teacher.email}</span></td>
+                <td class="px-6 py-4"><div class="flex flex-wrap gap-1">${teacher.subjects.map(s => `<span class="subject-tag">${s.name}</span>`).join('') || '<span class="text-xs text-gray-500">None</span>'}</div></td>
+                <td class="px-6 py-4">${teacher.max_weekly_hours}</td>
+                <td class="px-6 py-4 text-right">
+                    <button class="font-medium text-purple-400 hover:underline mr-4 edit-btn">Edit</button>
+                    <button class="font-medium text-red-500 hover:underline delete-btn">Delete</button>
+                </td>
+            `;
+            row.querySelector('.edit-btn').addEventListener('click', () => showForm(teacher));
+            row.querySelector('.delete-btn').addEventListener('click', () => confirmDeletion(teacher.id, teacher.full_name));
+        });
+    }
+
+    function showForm(data = {}) {
+        const isNew = !data.id;
+        const form = formModal.querySelector('form');
+        form.reset();
+        
+        form.querySelector('.form-title').textContent = isNew ? 'Add New Teacher' : `Editing: ${data.full_name}`;
+        form.querySelector('[name="password"]').setAttribute('required', isNew);
+
+        // Populate form
+        if (!isNew) {
+            Object.keys(data).forEach(key => {
+                const input = form.querySelector(`[name="${key}"]`);
+                if (input) input.value = data[key];
+            });
+        }
+        
+        // Populate and handle subjects
+        const subjectsContainer = document.getElementById('subjects-container');
+        subjectsContainer.innerHTML = '';
+        allSubjects.forEach(subject => {
+            const checked = !isNew && data.subjects.some(s => s.id === subject.id);
+            subjectsContainer.innerHTML += `
+                <label class="flex items-center gap-x-2 p-1.5 rounded hover:bg-gray-700 text-sm subject-label">
+                    <input type="checkbox" name="subject_ids" value="${subject.id}" ${checked ? 'checked' : ''} class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-600">
+                    <span class="subject-name">${subject.name}</span> <span class="text-xs text-gray-500">(${subject.code})</span>
+                </label>`;
+        });
+
+
+        formModal.classList.remove('hidden');
+        setTimeout(() => modalContent.classList.add('opacity-100', 'translate-y-0'), 10);
+
+        form.querySelector('.save-btn').onclick = () => saveForm(form, data.id);
+        form.querySelector('.cancel-btn').onclick = hideForm;
+    }
+
+    function hideForm() {
+        modalContent.classList.remove('opacity-100', 'translate-y-0');
+        setTimeout(() => formModal.classList.add('hidden'), 200);
+    }
+
+    // --- Event Listeners ---
+    searchInput.addEventListener('input', (e) => renderTable(e.target.value.toLowerCase()));
+    addTeacherBtn.addEventListener('click', () => showForm());
+    
+    formModal.addEventListener('input', (e) => {
+        if (e.target.id === 'subject-search') {
+            const filter = e.target.value.toLowerCase();
+            document.querySelectorAll('.subject-label').forEach(label => {
+                const name = label.querySelector('.subject-name').textContent.toLowerCase();
+                label.style.display = name.includes(filter) ? '' : 'none';
+            });
+        }
+    });
+
+    // --- Actions ---
+    async function saveForm(form, id) {
+        const formData = new FormData(form);
+        const payload = Object.fromEntries(formData.entries());
+        payload.subject_ids = formData.getAll('subject_ids').map(Number); // Get all checked subjects
+
+        if (!id && !payload.password) {
+            showToast('Password is required for new teachers.', 'error');
+            return;
+        }
+
+        const result = await apiRequest(id ? `${API_BASE_URL}/${id}` : API_BASE_URL, id ? 'PUT' : 'POST', payload);
+        if (result) {
+            showToast(result.message, 'success');
+            hideForm();
+            await loadInitialData();
+        }
+    }
+
+    function confirmDeletion(id, name) {
+        const modal = document.getElementById('confirm-modal');
+        document.getElementById('confirm-text').textContent = `This will permanently delete "${name}". This action cannot be undone.`;
+        modal.classList.remove('hidden');
+
+        const deleteHandler = async () => {
+            const result = await apiRequest(`${API_BASE_URL}/${id}`, 'DELETE');
+            if (result) {
+                showToast(result.message, 'success');
+                teachers = teachers.filter(t => t.id !== id);
+                renderTable(searchInput.value.toLowerCase());
+            }
+            closeConfirm();
+        };
+
+        const closeConfirm = () => {
+            modal.classList.add('hidden');
+            document.getElementById('confirm-delete').removeEventListener('click', deleteHandler);
+            document.getElementById('confirm-cancel').removeEventListener('click', closeConfirm);
+        };
+
+        document.getElementById('confirm-delete').addEventListener('click', deleteHandler, { once: true });
+        document.getElementById('confirm-cancel').addEventListener('click', closeConfirm, { once: true });
+    }
+    
+    function showToast(message, type = 'success') {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = `fixed top-5 right-5 text-white py-2 px-5 rounded-lg shadow-lg text-sm transition-all z-50`;
+        toast.classList.add(type === 'success' ? 'bg-green-600' : 'bg-red-600', 'opacity-100', 'translate-x-0');
+        setTimeout(() => {
+            toast.classList.remove('opacity-100', 'translate-x-0');
+            toast.classList.add('opacity-0', 'translate-x-10');
+        }, 3000);
+    }
+
+    // --- Initial Load ---
+    loadInitialData();
+});
+</script>
+{% endblock %}

@@ -4,7 +4,7 @@ import json
 from flask import Flask, render_template, request, redirect, url_for, session, g, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import ForeignKey, exc
 from sqlalchemy.orm import relationship
 
@@ -17,10 +17,17 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # --- Association Tables for Many-to-Many Relationships ---
-teacher_subjects_association = db.Table('teacher_subjects',
+# CORRECTED: Split the single problematic association table into two distinct ones.
+teacher_school_subjects_association = db.Table('teacher_school_subjects',
     db.Column('teacher_id', db.Integer, db.ForeignKey('teacher.id'), primary_key=True),
     db.Column('subject_id', db.Integer, db.ForeignKey('subject.id'), primary_key=True)
 )
+
+teacher_college_courses_association = db.Table('teacher_college_courses',
+    db.Column('teacher_id', db.Integer, db.ForeignKey('teacher.id'), primary_key=True),
+    db.Column('course_id', db.Integer, db.ForeignKey('course.id'), primary_key=True)
+)
+
 student_electives_association = db.Table('student_electives',
     db.Column('student_id', db.Integer, db.ForeignKey('student.id'), primary_key=True),
     db.Column('subject_id', db.Integer, db.ForeignKey('subject.id'), primary_key=True)
@@ -35,6 +42,7 @@ class AppConfig(db.Model):
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(120), nullable=False)
     role = db.Column(db.String(20), nullable=False) # admin, teacher, student
     
@@ -65,8 +73,11 @@ class Teacher(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True, nullable=False)
     full_name = db.Column(db.String(120), nullable=False)
+    max_weekly_hours = db.Column(db.Integer, nullable=False, default=20)
     user = relationship("User", back_populates="teacher")
-    subjects = relationship("Subject", secondary=teacher_subjects_association, backref="teachers")
+    # CORRECTED: Relationships now point to the new, separate association tables.
+    subjects = relationship("Subject", secondary=teacher_school_subjects_association, backref="teachers_school")
+    courses = relationship("Course", secondary=teacher_college_courses_association, backref="teachers_college")
 
 class StudentSection(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -115,17 +126,21 @@ class ExamSeating(db.Model):
 
 # --- System & Logging ---
 class ActivityLog(db.Model):
-    id = db.Column(db.Integer, primary_key=True); timestamp = db.Column(db.DateTime, default=datetime.utcnow); level = db.Column(db.String(20)); message = db.Column(db.String(255))
+    id = db.Column(db.Integer, primary_key=True); timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc)); level = db.Column(db.String(20)); message = db.Column(db.String(255))
     @property
     def time_ago(self):
-        delta = datetime.utcnow() - self.timestamp
+        timestamp_to_compare = self.timestamp
+        if timestamp_to_compare.tzinfo is None:
+            timestamp_to_compare = timestamp_to_compare.replace(tzinfo=timezone.utc)
+            
+        delta = datetime.now(timezone.utc) - timestamp_to_compare
         if delta < timedelta(minutes=1): return "just now"
         elif delta < timedelta(hours=1): return f"{delta.seconds // 60} minutes ago"
         elif delta < timedelta(days=1): return f"{delta.seconds // 3600} hours ago"
         else: return f"{delta.days} days ago"
 
 class SystemMetric(db.Model):
-    id = db.Column(db.Integer, primary_key=True); date = db.Column(db.Date, default=datetime.utcnow); key = db.Column(db.String(50)); value = db.Column(db.Integer)
+    id = db.Column(db.Integer, primary_key=True); date = db.Column(db.Date, default=lambda: datetime.now(timezone.utc).date()); key = db.Column(db.String(50)); value = db.Column(db.Integer)
 
 # --- Helper Functions ---
 def hash_password(password): return hashlib.sha256(password.encode()).hexdigest()
@@ -145,7 +160,7 @@ def log_activity(level, message):
     except Exception as e: print(f"Error logging activity: {e}"); db.session.rollback()
 
 def calculate_growth(metric_key, current_value):
-    last_week = datetime.utcnow().date() - timedelta(days=7)
+    last_week = datetime.now(timezone.utc).date() - timedelta(days=7)
     last_metric = SystemMetric.query.filter_by(key=metric_key).filter(SystemMetric.date <= last_week).order_by(SystemMetric.date.desc()).first()
     if last_metric and last_metric.value > 0:
         return round(((current_value - last_metric.value) / last_metric.value) * 100, 1)
@@ -187,7 +202,9 @@ def setup():
             data = json.loads(payload_str)
             
             with db.session.begin_nested():
-                admin = User(username=data['admin']['username'], password=hash_password(data['admin']['password']), role='admin')
+                admin_data = data['admin']
+                admin_email = admin_data.get('email', f"{admin_data['username']}@example.com")
+                admin = User(username=admin_data['username'], email=admin_email, password=hash_password(admin_data['password']), role='admin')
                 db.session.add(admin)
 
                 details = data['details']
@@ -554,9 +571,143 @@ def handle_subjects(mode, item_id=None):
         db.session.rollback()
         return jsonify({"message": f"An unexpected error occurred: {e}"}), 500
 
-
 @app.route('/staff')
-def manage_staff(): return "<h1>Manage Staff</h1>"
+def manage_staff():
+    if 'user_id' not in session: return redirect(url_for('login'))
+    return render_template('staff.html')
+
+@app.route('/api/staff/all_subjects', methods=['GET'])
+def get_all_subjects_for_staff():
+    if 'user_id' not in session: return jsonify({"message": "Unauthorized"}), 401
+    
+    subjects_list = []
+    if g.app_mode == 'school':
+        subjects = Subject.query.order_by(Subject.name).all()
+        subjects_list = [{"id": s.id, "name": s.name, "code": s.code, "type": "subject"} for s in subjects]
+    else:
+        courses = Course.query.order_by(Course.name).all()
+        subjects_list = [{"id": c.id, "name": c.name, "code": c.code, "type": "course"} for c in courses]
+        
+    return jsonify({"subjects": subjects_list})
+
+@app.route('/api/staff', methods=['GET', 'POST'])
+@app.route('/api/staff/<int:teacher_id>', methods=['PUT', 'DELETE'])
+def handle_staff(teacher_id=None):
+    if 'user_id' not in session: return jsonify({"message": "Unauthorized"}), 401
+
+    try:
+        if request.method == 'GET':
+            teachers = Teacher.query.options(
+                db.joinedload(Teacher.user), 
+                db.joinedload(Teacher.subjects),
+                db.joinedload(Teacher.courses)
+            ).all()
+            
+            teacher_list = []
+            for t in teachers:
+                subjects = [{"id": s.id, "name": s.name} for s in t.subjects]
+                courses = [{"id": c.id, "name": c.name} for c in t.courses]
+                all_teachable = subjects + courses
+
+                teacher_list.append({
+                    "id": t.id,
+                    "full_name": t.full_name,
+                    "email": t.user.email,
+                    "username": t.user.username,
+                    "max_weekly_hours": t.max_weekly_hours,
+                    "subjects": all_teachable
+                })
+            return jsonify({"teachers": teacher_list})
+
+        # CORRECTED: Only attempt to parse JSON for POST and PUT requests
+        if request.method in ['POST', 'PUT']:
+            data = request.json
+        
+        # --- Create Operation ---
+        if request.method == 'POST':
+            if not data.get('password'): return jsonify({"message": "Password is required for new teachers."}), 400
+            
+            if User.query.filter_by(username=data['username']).first():
+                return jsonify({"message": "Username already exists."}), 409
+            if User.query.filter_by(email=data['email']).first():
+                return jsonify({"message": "Email already exists."}), 409
+
+            new_user = User(
+                username=data['username'],
+                email=data['email'],
+                password=hash_password(data['password']),
+                role='teacher'
+            )
+            db.session.add(new_user)
+            db.session.flush()
+
+            new_teacher = Teacher(
+                full_name=data['full_name'],
+                max_weekly_hours=data['max_weekly_hours'],
+                user_id=new_user.id
+            )
+            db.session.add(new_teacher)
+            db.session.flush()
+
+            if g.app_mode == 'school':
+                subjects = Subject.query.filter(Subject.id.in_(data.get('subject_ids', []))).all()
+                new_teacher.subjects = subjects
+            else:
+                courses = Course.query.filter(Course.id.in_(data.get('subject_ids', []))).all()
+                new_teacher.courses = courses
+
+            db.session.commit()
+            log_activity('info', f"Teacher '{data['full_name']}' created.")
+            return jsonify({"message": "Teacher created successfully!"})
+        
+        teacher = Teacher.query.get_or_404(teacher_id)
+        
+        # --- Update Operation ---
+        if request.method == 'PUT':
+            user = teacher.user
+            if user.username != data['username'] and User.query.filter_by(username=data['username']).first():
+                return jsonify({"message": "Username already exists."}), 409
+            if user.email != data['email'] and User.query.filter_by(email=data['email']).first():
+                return jsonify({"message": "Email already exists."}), 409
+            
+            user.username = data['username']
+            user.email = data['email']
+            if data.get('password'):
+                user.password = hash_password(data['password'])
+            
+            teacher.full_name = data['full_name']
+            teacher.max_weekly_hours = data['max_weekly_hours']
+
+            if g.app_mode == 'school':
+                teacher.subjects = Subject.query.filter(Subject.id.in_(data.get('subject_ids', []))).all()
+                teacher.courses = []
+            else:
+                teacher.courses = Course.query.filter(Course.id.in_(data.get('subject_ids', []))).all()
+                teacher.subjects = []
+
+            db.session.commit()
+            log_activity('info', f"Teacher '{teacher.full_name}' updated.")
+            return jsonify({"message": "Teacher updated successfully!"})
+
+        # --- Delete Operation ---
+        if request.method == 'DELETE':
+            # Must delete the user first due to relationship cascade
+            user_to_delete = teacher.user
+            db.session.delete(teacher)
+            db.session.delete(user_to_delete)
+            db.session.commit()
+            log_activity('warning', f"Teacher '{teacher.full_name}' deleted.")
+            return jsonify({"message": "Teacher deleted successfully!"})
+
+    except exc.IntegrityError as e:
+        db.session.rollback()
+        print(f"ERROR in handle_staff (Integrity): {e}")
+        return jsonify({"message": "Database integrity error occurred."}), 400
+    except Exception as e:
+        db.session.rollback()
+        print(f"ERROR in handle_staff: {e}")
+        return jsonify({"message": f"An unexpected error occurred: {e}"}), 500
+
 @app.route('/sections')
 def manage_sections(): return "<h1>Manage Sections</h1>"
 @app.route('/classrooms')
@@ -570,7 +721,7 @@ def analytics(): return "<h1>Analytics</h1>"
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
         if not SystemMetric.query.filter_by(date=today).first():
              db.session.add(SystemMetric(key='total_students', value=User.query.filter_by(role='student').count()))
              db.session.add(SystemMetric(key='total_teachers', value=User.query.filter_by(role='teacher').count()))
