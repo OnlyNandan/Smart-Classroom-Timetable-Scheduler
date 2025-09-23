@@ -10,164 +10,501 @@
 {% endblock %}
 
 {% block content %}
-<div id="app" class="space-y-6">
-    <!-- Filters and Main Actions -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end bg-slate-900/50 p-4 rounded-xl">
-        <div class="flex flex-wrap sm:flex-nowrap gap-x-4 gap-y-2">
-            <div>
-                <label class="label">{{ 'Group' if g.app_mode == 'school' else 'Semester' }}</label>
-                <select v-model="filters.primary" @change="fetchSecondary" class="input-base w-full">
-                    <option disabled value="">Select...</option>
-                    <option v-for="item in primaryFilterData" :key="item.id" :value="item.id">${ item.name }</option>
-                </select>
+<div id="app" class="space-y-8">
+    <!-- Header Section -->
+    <div class="glass-card p-6 rounded-2xl">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <!-- Filters -->
+            <div class="flex flex-col sm:flex-row gap-4 flex-1">
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">{{ 'Group' if g.app_mode == 'school' else 'Semester' }}</label>
+                    <select v-model="filters.primary" @change="fetchSecondary" class="input-base w-full">
+                        <option disabled value="">Select {{ 'Group' if g.app_mode == 'school' else 'Semester' }}...</option>
+                        <option v-for="item in primaryFilterData" :key="item.id" :value="item.id">${ item.name }</option>
+                    </select>
+                </div>
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">{{ 'Grade' if g.app_mode == 'school' else 'Department' }}</label>
+                    <select v-model="filters.secondary" @change="fetchSections" class="input-base w-full" :disabled="!filters.primary">
+                        <option disabled value="">Select {{ 'Grade' if g.app_mode == 'school' else 'Department' }}...</option>
+                        <option v-for="item in secondaryFilterData" :key="item.id" :value="item.id">${ item.name }</option>
+                    </select>
+                </div>
             </div>
-            <div>
-                <label class="label">{{ 'Grade' if g.app_mode == 'school' else 'Department' }}</label>
-                <select v-model="filters.secondary" @change="fetchSections" class="input-base w-full" :disabled="!filters.primary">
-                    <option disabled value="">Select...</option>
-                    <option v-for="item in secondaryFilterData" :key="item.id" :value="item.id">${ item.name }</option>
-                </select>
+            
+            <!-- Add Button -->
+            <div class="flex justify-end">
+                <button @click="openSectionModal()" class="btn-primary px-6 py-3 text-sm font-semibold inline-flex items-center" :disabled="!filters.secondary">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    Add {{ 'Section' if g.app_mode == 'school' else 'Batch' }}
+                </button>
             </div>
-        </div>
-        <div class="flex justify-start md:justify-end">
-            <button @click="openSectionModal()" class="btn-primary" :disabled="!filters.secondary">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
-                Add {{ 'Section' if g.app_mode == 'school' else 'Batch' }}
-            </button>
         </div>
     </div>
     
     <!-- Main Content Area -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" v-if="filters.secondary">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8" v-if="filters.secondary">
         <!-- Left Panel: Sections List -->
-        <div class="lg:col-span-1 flex flex-col gap-y-3">
-            <div v-for="section in sections" :key="section.id" @click="selectedSection = section"
-                class="glass-card p-4 rounded-lg cursor-pointer transition-all duration-200"
-                :class="{ 'ring-2 ring-purple-500 bg-slate-700/50': selectedSection && selectedSection.id === section.id, 'hover:bg-slate-800/50': !selectedSection || selectedSection.id !== section.id }">
-                <div class="flex justify-between items-center">
-                    <h3 class="text-lg font-semibold text-white">${ section.name }</h3>
-                    <span class="text-sm font-mono px-2 py-1 bg-gray-900/50 rounded-md text-cyan-400">${ section.students.length } / ${ section.capacity }</span>
+        <div class="lg:col-span-1">
+            <div class="glass-card p-6 rounded-2xl">
+                <h3 class="text-lg font-semibold text-white mb-4">{{ 'Sections' if g.app_mode == 'school' else 'Batches' }}</h3>
+                <div class="space-y-3">
+                    <div v-for="section in sections" :key="section.id" @click="selectedSection = section"
+                        class="p-4 rounded-xl cursor-pointer transition-all duration-300 border"
+                        :class="{ 
+                            'border-purple-500 bg-purple-500/10 shadow-lg shadow-purple-500/20': selectedSection && selectedSection.id === section.id, 
+                            'border-gray-700 hover:border-gray-600 hover:bg-gray-800/30': !selectedSection || selectedSection.id !== section.id 
+                        }">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h4 class="text-base font-semibold text-white">${ section.name }</h4>
+                                <p class="text-sm text-gray-400 mt-1">${ section.students.length } students enrolled</p>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm font-mono px-3 py-1 bg-gray-800/50 rounded-lg text-cyan-400">
+                                    ${ section.students.length }/${ section.capacity }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-if="sections.length === 0" class="text-center py-12">
+                        <svg class="mx-auto h-12 w-12 text-gray-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                        <p class="text-gray-500 text-sm">No {{ 'sections' if g.app_mode == 'school' else 'batches' }} found</p>
+                        <p class="text-gray-600 text-xs mt-1">Add one to get started</p>
+                    </div>
                 </div>
             </div>
-            <p v-if="sections.length === 0" class="text-center text-gray-500 py-8">No {{ 'sections' if g.app_mode == 'school' else 'batches' }} found. Add one to get started.</p>
         </div>
 
         <!-- Right Panel: Students and Actions -->
         <div class="lg:col-span-2 space-y-6">
-            <div v-if="selectedSection" class="glass-card rounded-xl p-5">
-                <div class="flex flex-wrap gap-y-2 justify-between items-center mb-4">
-                    <h3 class="text-xl font-bold text-white">Students in ${ selectedSection.name }</h3>
-                    <div class="flex items-center gap-x-2">
-                         <button @click="openStudentModal()" class="btn-secondary text-sm">Add Student</button>
-                         <button @click="openSectionModal(selectedSection)" class="text-purple-400 hover:text-purple-300 p-1 ml-2">Edit</button>
-                         <button @click="deleteSection(selectedSection)" class="text-red-500 hover:text-red-400 p-1">Delete</button>
+            <div v-if="selectedSection" class="glass-card rounded-2xl p-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                    <div>
+                        <h3 class="text-xl font-bold text-white">Students in ${ selectedSection.name }</h3>
+                        <p class="text-sm text-gray-400 mt-1">Manage student enrollments and information</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button @click="openStudentModal()" class="btn-secondary px-4 py-2 text-sm font-medium inline-flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                            </svg>
+                            Add Student
+                        </button>
+                        <button @click="openSectionModal(selectedSection)" class="p-2 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-lg transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                            </svg>
+                        </button>
+                        <button @click="deleteSection(selectedSection)" class="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd" />
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
-                <div class="overflow-x-auto max-h-96">
-                    <table class="w-full text-sm text-left text-gray-400">
-                        <thead class="text-xs text-gray-300 uppercase bg-gray-800/60 sticky top-0">
-                            <tr>
-                                <th class="px-6 py-3">Full Name</th>
-                                <th class="px-6 py-3">Username</th>
-                                <th class="px-6 py-3">Email</th>
-                                <th class="px-6 py-3 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-if="selectedSection.students.length === 0"><td colspan="4" class="text-center py-6 text-gray-500">No students assigned to this section.</td></tr>
-                            <tr v-for="student in selectedSection.students" :key="student.id" class="border-b border-gray-700 hover:bg-slate-800/40">
-                                <td class="px-6 py-4 font-medium text-white">${ student.full_name }</td>
-                                <td class="px-6 py-4">${ student.user.username }</td>
-                                <td class="px-6 py-4">${ student.user.email || 'N/A' }</td>
-                                <td class="px-6 py-4 text-right">
-                                    <button @click="openStudentModal(student, selectedSection.id)" class="text-purple-400 hover:text-purple-300 p-1 text-xs">Edit</button>
-                                    <button @click="deleteStudent(student)" class="text-red-500 hover:text-red-400 p-1 text-xs">Delete</button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                
+                <div class="overflow-hidden rounded-xl border border-gray-700">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-800/50">
+                                <tr>
+                                    <th class="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Student</th>
+                                    <th class="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Username</th>
+                                    <th class="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Email</th>
+                                    <th class="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Electives</th>
+                                    <th class="px-6 py-4 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-700">
+                                <tr v-if="selectedSection.students.length === 0">
+                                    <td colspan="5" class="px-6 py-12 text-center">
+                                        <div class="flex flex-col items-center">
+                                            <svg class="h-12 w-12 text-gray-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                                            </svg>
+                                            <p class="text-gray-500 text-sm">No students enrolled yet</p>
+                                            <p class="text-gray-600 text-xs mt-1">Add students to get started</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr v-for="student in selectedSection.students" :key="student.id" class="hover:bg-gray-800/30 transition-colors">
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10">
+                                                <div class="h-10 w-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-semibold text-sm">
+                                                    ${ student.full_name.charAt(0).toUpperCase() }
+                                                </div>
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-white">${ student.full_name }</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-300">${ student.user.username }</td>
+                                    <td class="px-6 py-4 text-sm text-gray-300">${ student.user.email || 'Not provided' }</td>
+                                    <td class="px-6 py-4 text-sm text-gray-300">
+                                        <div v-if="student.electives && student.electives.length > 0" class="flex flex-wrap gap-1">
+                                            <span v-for="elective in student.electives" :key="elective.id" 
+                                                  class="px-2 py-1 bg-purple-500/20 text-purple-300 text-xs rounded-full">
+                                                ${ elective.name }
+                                            </span>
+                                        </div>
+                                        <span v-else class="text-gray-500 text-xs">No electives</span>
+                                    </td>
+                                    <td class="px-6 py-4 text-right">
+                                        <div class="flex items-center justify-end gap-2">
+                                            <button @click="openStudentModal(student, selectedSection.id)" class="p-2 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-lg transition-colors">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                                </svg>
+                                            </button>
+                                            <button @click="deleteStudent(student)" class="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd" />
+                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
             
             <!-- Bulk Import Card -->
-            <div class="glass-card rounded-xl p-5">
-                 <h3 class="text-xl font-bold text-white mb-2">Bulk Import Students</h3>
-                 <p class="text-sm text-gray-400 mb-4">Quickly add multiple students using a CSV file. Accounts will be created automatically.</p>
-                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center bg-gray-900/40 p-4 rounded-lg">
-                    <div class="space-y-2">
-                        <a href="{{ url_for('download_csv_template') }}" class="btn-secondary w-full text-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+            <div class="glass-card rounded-2xl p-6">
+                <div class="mb-6">
+                    <h3 class="text-xl font-bold text-white mb-2">Bulk Import Students</h3>
+                    <p class="text-sm text-gray-400">Quickly add multiple students using a CSV file. Accounts will be created automatically.</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Download Template -->
+                    <div class="bg-gray-800/30 p-6 rounded-xl border border-gray-700">
+                        <div class="flex items-center mb-4">
+                            <div class="flex-shrink-0">
+                                <div class="h-10 w-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <h4 class="text-sm font-semibold text-white">Download Template</h4>
+                                <p class="text-xs text-gray-400">Get the CSV template with proper format</p>
+                            </div>
+                        </div>
+                        <a href="{{ url_for('sections.download_csv_template') }}" class="btn-secondary w-full text-center mb-4 inline-flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
                             Download CSV Template
                         </a>
-                        <p class="text-xs text-center text-gray-500">Columns: full_name, section_name, email (optional)</p>
+                        <div class="p-3 bg-gray-900/50 rounded-lg">
+                            <p class="text-xs text-gray-400 mb-2 font-medium">CSV Columns:</p>
+                            <div class="space-y-1">
+                                <div class="text-xs text-gray-500">• <span class="text-gray-300">Full Name</span> - Student's full name (required)</div>
+                                <div class="text-xs text-gray-500">• <span class="text-gray-300">Section Name</span> - Target section/batch (required)</div>
+                                <div v-if="appMode === 'college'" class="text-xs text-gray-500">• <span class="text-gray-300">Semester</span> - Semester name (required for college)</div>
+                                <div v-if="appMode === 'college'" class="text-xs text-gray-500">• <span class="text-gray-300">Department</span> - Department name (required for college)</div>
+                                <div class="text-xs text-gray-500">• <span class="text-gray-300">Email</span> - Email address (optional)</div>
+                            </div>
+                            <div class="mt-3 p-2 bg-blue-900/30 rounded border border-blue-500/30">
+                                <p class="text-xs text-blue-300 font-medium mb-1">Template includes 35+ sample entries</p>
+                                <p class="text-xs text-blue-400">• Username auto-generated from full name</p>
+                                <p class="text-xs text-blue-400">• Password set to username</p>
+                                <p v-if="appMode === 'college'" class="text-xs text-blue-400">• Auto-creates new classes when full</p>
+                                <p v-if="appMode === 'college'" class="text-xs text-blue-400">• Validates semester-department uniqueness</p>
+                                <p class="text-xs text-blue-400">• Electives managed separately via elective selection system</p>
+                            </div>
+                        </div>
                     </div>
-                    <div>
+                    
+                    <!-- Upload File -->
+                    <div class="bg-gray-800/30 p-6 rounded-xl border border-gray-700">
+                        <div class="flex items-center mb-4">
+                            <div class="flex-shrink-0">
+                                <div class="h-10 w-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 13H11V9.414l-1.293 1.293a1 1 0 01-1.414-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L13 9.414V13H5.5z" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <h4 class="text-sm font-semibold text-white">Upload & Import</h4>
+                                <p class="text-xs text-gray-400">Select your CSV file to import students</p>
+                            </div>
+                        </div>
+                        
                         <input type="file" @change="handleFileUpload" id="csv-upload" class="hidden" accept=".csv">
-                        <label for="csv-upload" class="btn-secondary w-full text-center cursor-pointer">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 13H11V9.414l-1.293 1.293a1 1 0 01-1.414-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L13 9.414V13H5.5z" /><path d="M9 13h2v5a1 1 0 11-2 0v-5z" /></svg>
+                        <label for="csv-upload" class="btn-secondary w-full text-center cursor-pointer mb-3 inline-flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 13H11V9.414l-1.293 1.293a1 1 0 01-1.414-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L13 9.414V13H5.5z" />
+                            </svg>
                             <span v-if="!modals.upload.file">Choose File...</span>
                             <span v-else class="truncate max-w-xs">${ modals.upload.file.name }</span>
                         </label>
-                        <button @click="uploadFile" class="btn-primary bg-green-600 hover:bg-green-700 w-full mt-2" :disabled="!modals.upload.file || isSaving">${ isSaving ? 'Uploading...' : 'Upload & Import' }</button>
+                        
+                        <button @click="uploadFile" class="btn-primary bg-green-600 hover:bg-green-700 w-full inline-flex items-center justify-center" :disabled="!modals.upload.file || isSaving">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.293l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd" />
+                            </svg>
+                            ${ isSaving ? 'Uploading...' : 'Upload & Import' }
+                        </button>
                     </div>
-                 </div>
-                 <div v-if="modals.upload.error" class="text-red-400 text-sm mt-2 p-2 bg-red-900/30 rounded">${ modals.upload.error }</div>
-                 <div v-if="modals.upload.success" class="text-green-400 text-sm mt-2 p-2 bg-green-900/30 rounded">${ modals.upload.success }</div>
+                </div>
+                
+                <!-- Status Messages -->
+                <div v-if="modals.upload.error" class="mt-4 p-4 bg-red-900/30 border border-red-500/30 rounded-xl">
+                    <div class="flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-400 mr-3" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        </svg>
+                        <span class="text-red-400 text-sm">${ modals.upload.error }</span>
+                    </div>
+                </div>
+                <div v-if="modals.upload.success" class="mt-4 p-4 bg-green-900/30 border border-green-500/30 rounded-xl">
+                    <div class="flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-400 mr-3" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                        </svg>
+                        <span class="text-green-400 text-sm">${ modals.upload.success }</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
     
-     <div v-else class="text-center py-12 text-gray-500">
-        <svg class="mx-auto h-12 w-12 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
-        <h3 class="mt-2 text-sm font-semibold text-gray-300">No Group Selected</h3>
-        <p class="mt-1 text-sm text-gray-500">Please select a {{ 'Group & Grade' if g.app_mode == 'school' else 'Semester & Department' }} to see the {{ 'sections' if g.app_mode == 'school' else 'batches' }}.</p>
+    <div v-else class="glass-card rounded-2xl p-12 text-center">
+        <div class="max-w-md mx-auto">
+            <div class="flex justify-center mb-6">
+                <div class="h-20 w-20 rounded-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center">
+                    <svg class="h-10 w-10 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                </div>
+            </div>
+            <h3 class="text-lg font-semibold text-white mb-2">Select {{ 'Group & Grade' if g.app_mode == 'school' else 'Semester & Department' }}</h3>
+            <p class="text-sm text-gray-400 mb-6">Choose a {{ 'Group & Grade' if g.app_mode == 'school' else 'Semester & Department' }} from the dropdowns above to view and manage {{ 'sections' if g.app_mode == 'school' else 'batches' }}.</p>
+            <div class="flex justify-center">
+                <div class="inline-flex items-center px-4 py-2 bg-gray-800/50 rounded-lg text-sm text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                    </svg>
+                    Use the filters above to get started
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Section Modal -->
     <div v-if="modals.section.show" class="modal-backdrop" @click.self="closeSectionModal">
-        <div class="modal-content">
+        <div class="modal-content max-w-md">
             <div class="modal-header">
-                <h3>${ modals.section.isEdit ? 'Edit' : 'Add' } {{ 'Section' if g.app_mode == 'school' else 'Batch' }}</h3>
-                <button @click="closeSectionModal">&times;</button>
+                <div class="flex items-center">
+                    <div class="h-8 w-8 rounded-lg bg-purple-500/20 flex items-center justify-center mr-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-white">${ modals.section.isEdit ? 'Edit' : 'Add' } {{ 'Section' if g.app_mode == 'school' else 'Batch' }}</h3>
+                </div>
+                <button @click="closeSectionModal" class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </button>
             </div>
-            <div class="p-6 space-y-4">
-                <div><label class="label">Name</label><input type="text" v-model="modals.section.data.name" class="input-base w-full" placeholder="e.g., Section A"></div>
-                <div><label class="label">Capacity</label><input type="number" v-model.number="modals.section.data.capacity" class="input-base w-full"></div>
-                <div class="text-red-400 text-sm" v-if="modals.section.error">${ modals.section.error }</div>
+            <div class="p-6 space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Name</label>
+                    <input type="text" v-model="modals.section.data.name" class="input-base w-full" placeholder="e.g., Section A">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Capacity</label>
+                    <input type="number" v-model.number="modals.section.data.capacity" class="input-base w-full" placeholder="30">
+                </div>
+                <div v-if="modals.section.error" class="p-3 bg-red-900/30 border border-red-500/30 rounded-lg">
+                    <div class="flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-red-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        </svg>
+                        <span class="text-red-400 text-sm">${ modals.section.error }</span>
+                    </div>
+                </div>
             </div>
-            <div class="modal-footer"><button @click="closeSectionModal" class="btn-secondary">Cancel</button><button @click="saveSection" class="btn-primary" :disabled="isSaving">${ isSaving ? 'Saving...' : 'Save' }</button></div>
+            <div class="modal-footer">
+                <button @click="closeSectionModal" class="btn-secondary px-6 py-2">Cancel</button>
+                <button @click="saveSection" class="btn-primary px-6 py-2 inline-flex items-center" :disabled="isSaving">
+                    <svg v-if="isSaving" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 animate-spin" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                    </svg>
+                    ${ isSaving ? 'Saving...' : 'Save' }
+                </button>
+            </div>
         </div>
     </div>
     
     <!-- Student Modal -->
     <div v-if="modals.student.show" class="modal-backdrop" @click.self="closeStudentModal">
-         <div class="modal-content">
-            <div class="modal-header"><h3>${ modals.student.isEdit ? 'Edit' : 'Add' } Student</h3><button @click="closeStudentModal">&times;</button></div>
-            <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="sm:col-span-2"><label class="label">Full Name</label><input type="text" v-model="modals.student.data.full_name" class="input-base w-full"></div>
-                <div class="sm:col-span-2"><label class="label">{{ 'Section' if g.app_mode == 'school' else 'Batch' }}</label><select v-model="modals.student.data.section_id" class="input-base w-full"><option v-for="section in sections" :value="section.id">${ section.name }</option></select></div>
-                <div><label class="label">Username</label><input type="text" v-model="modals.student.data.username" class="input-base w-full"></div>
-                <div><label class="label">Email (Optional)</label><input type="email" v-model="modals.student.data.email" class="input-base w-full"></div>
-                <div class="sm:col-span-2"><label class="label">Password ${ modals.student.isEdit ? '(Leave blank to keep unchanged)' : '' }</label><input type="password" v-model="modals.student.data.password" class="input-base w-full"></div>
-                <div class="text-red-400 text-sm sm:col-span-2" v-if="modals.student.error">${ modals.student.error }</div>
+        <div class="modal-content max-w-2xl">
+            <div class="modal-header">
+                <div class="flex items-center">
+                    <div class="h-8 w-8 rounded-lg bg-blue-500/20 flex items-center justify-center mr-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-white">${ modals.student.isEdit ? 'Edit' : 'Add' } Student</h3>
+                </div>
+                <button @click="closeStudentModal" class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </button>
             </div>
-            <div class="modal-footer"><button @click="closeStudentModal" class="btn-secondary">Cancel</button><button @click="saveStudent" class="btn-primary" :disabled="isSaving">${ isSaving ? 'Saving...' : 'Save' }</button></div>
+            <div class="p-6 space-y-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Full Name</label>
+                        <input type="text" v-model="modals.student.data.full_name" class="input-base w-full" placeholder="Enter student's full name">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">{{ 'Section' if g.app_mode == 'school' else 'Batch' }}</label>
+                        <select v-model="modals.student.data.section_id" class="input-base w-full">
+                            <option disabled value="">Select {{ 'Section' if g.app_mode == 'school' else 'Batch' }}...</option>
+                            <option v-for="section in sections" :value="section.id">${ section.name }</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Username</label>
+                        <input type="text" v-model="modals.student.data.username" class="input-base w-full" placeholder="Enter username">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Email (Optional)</label>
+                        <input type="email" v-model="modals.student.data.email" class="input-base w-full" placeholder="student@example.com">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                            Password ${ modals.student.isEdit ? '(Leave blank to keep unchanged)' : '(Leave blank to use username as password)' }
+                        </label>
+                        <input type="password" v-model="modals.student.data.password" class="input-base w-full" placeholder="${ modals.student.isEdit ? 'Enter new password' : 'Enter password (or leave blank to use username)' }">
+                        <p class="text-xs text-gray-500 mt-1">${ modals.student.isEdit ? 'Leave blank to keep the current password' : 'If left blank, the username will be used as the password' }</p>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Electives (Optional)</label>
+                        <input type="text" v-model="modals.student.data.electives" class="input-base w-full" placeholder="Enter elective subjects/courses separated by commas">
+                        <p class="text-xs text-gray-500 mt-1">Example: Mathematics, Physics, Computer Science</p>
+                    </div>
+                </div>
+                <div v-if="modals.student.error" class="p-3 bg-red-900/30 border border-red-500/30 rounded-lg">
+                    <div class="flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-red-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        </svg>
+                        <span class="text-red-400 text-sm">${ modals.student.error }</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button @click="closeStudentModal" class="btn-secondary px-6 py-2">Cancel</button>
+                <button @click="saveStudent" class="btn-primary px-6 py-2 inline-flex items-center" :disabled="isSaving">
+                    <svg v-if="isSaving" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 animate-spin" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                    </svg>
+                    ${ isSaving ? 'Saving...' : 'Save' }
+                </button>
+            </div>
         </div>
     </div>
 
 </div>
 
 <style>
-.label { @apply block mb-1 text-sm font-medium text-gray-400; }
-.btn-primary { @apply inline-flex items-center justify-center px-4 py-2 font-semibold text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition disabled:bg-gray-600 disabled:cursor-not-allowed shadow-lg shadow-purple-900/40; }
-.btn-secondary { @apply inline-flex items-center justify-center px-4 py-2 font-semibold text-white bg-gray-600 rounded-lg hover:bg-gray-700 transition disabled:bg-gray-500 disabled:cursor-not-allowed; }
-.input-base { @apply block w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-900; }
-.modal-backdrop { @apply fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm; }
-.modal-content { @apply bg-gray-900 border border-gray-700 rounded-2xl shadow-xl w-full max-w-lg mx-4; }
-.modal-header { @apply flex items-center justify-between p-5 border-b border-gray-700; }
-.modal-header h3 { @apply text-xl font-semibold text-white; }
-.modal-header button { @apply text-gray-400 hover:text-white text-2xl; }
-.modal-footer { @apply flex items-center justify-end p-5 border-t border-gray-700 rounded-b-xl space-x-3; }
+.label { display:block; margin-bottom:0.25rem; font-size:0.875rem; font-weight:500; color:#9ca3af; }
+.modal-backdrop { 
+    position:fixed; 
+    inset:0; 
+    z-index:50; 
+    display:flex; 
+    align-items:center; 
+    justify-content:center; 
+    background:rgba(0,0,0,0.7); 
+    backdrop-filter: blur(8px); 
+    animation: fadeIn 0.2s ease-out;
+}
+.modal-content { 
+    background-color:#111827; 
+    border:1px solid #374151; 
+    border-radius:1.5rem; 
+    box-shadow:0 25px 50px -12px rgba(0,0,0,0.5); 
+    width:100%; 
+    margin:0 1rem; 
+    animation: slideUp 0.3s ease-out;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+.modal-header { 
+    display:flex; 
+    align-items:center; 
+    justify-content:space-between; 
+    padding:1.5rem; 
+    border-bottom:1px solid #374151; 
+}
+.modal-header h3 { 
+    font-size:1.25rem; 
+    font-weight:600; 
+    color:#fff; 
+}
+.modal-footer { 
+    display:flex; 
+    align-items:center; 
+    justify-content:flex-end; 
+    padding:1.5rem; 
+    border-top:1px solid #374151; 
+    gap:0.75rem; 
+    border-bottom-left-radius:1.5rem; 
+    border-bottom-right-radius:1.5rem; 
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { 
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Custom scrollbar for modal content */
+.modal-content::-webkit-scrollbar {
+    width: 6px;
+}
+.modal-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+.modal-content::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 3px;
+}
+.modal-content::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}
 </style>
 {% endblock %}
 
@@ -197,7 +534,7 @@ createApp({
         watch(() => filters.secondary, () => { selectedSection.value = null; sections.value = []; });
 
         const fetchPrimary = async () => {
-            const url = appMode === 'school' ? "{{ url_for('get_structure_items', mode='school') }}" : "{{ url_for('get_structure_items', mode='college') }}";
+            const url = appMode === 'school' ? "{{ url_for('structure.get_structure_items', mode='school') }}" : "{{ url_for('structure.get_structure_items', mode='college') }}";
             const res = await fetch(url);
             primaryFilterData.value = (await res.json()).items;
         };
@@ -212,7 +549,7 @@ createApp({
         const fetchSections = async () => {
             if (!filters.secondary) return;
             try {
-                const res = await fetch(`{{ url_for('handle_sections') }}?parent_id=${filters.secondary}`);
+                const res = await fetch(`{{ url_for('sections.handle_sections') }}?parent_id=${filters.secondary}`);
                 const data = await res.json();
                 sections.value = data.sections;
                 if (data.sections.length > 0) {
@@ -248,18 +585,47 @@ createApp({
 
         const deleteSection = async (section) => {
             if (!confirm(`Delete '${section.name}'? This will also unassign all its students.`)) return;
-            await fetch(`/api/sections/${section.id}`, { method: 'DELETE' });
-            selectedSection.value = null;
-            await fetchSections();
+            
+            try {
+                console.log(`Deleting section: ${section.name} (ID: ${section.id})`);
+                const response = await fetch(`/api/sections/${section.id}`, { method: 'DELETE' });
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.message || 'Failed to delete section');
+                }
+                
+                console.log('Section deleted successfully:', result.message);
+                selectedSection.value = null;
+                await fetchSections();
+            } catch (error) {
+                console.error('Error deleting section:', error);
+                alert(`Failed to delete section: ${error.message}`);
+            }
         };
         
         const openStudentModal = (student = null) => {
             modals.student.error = '';
             modals.student.isEdit = !!student;
             if (student) {
-                modals.student.data = { ...student, username: student.user.username, email: student.user.email, password: '' };
+                // Get electives for the student
+                const electives = student.electives ? student.electives.map(e => e.name).join(', ') : '';
+                modals.student.data = { 
+                    ...student, 
+                    username: student.user.username, 
+                    email: student.user.email, 
+                    password: '',
+                    electives: electives
+                };
             } else {
-                modals.student.data = { full_name: '', username: '', email: '', password: '', section_id: selectedSection.value?.id };
+                modals.student.data = { 
+                    full_name: '', 
+                    username: '', 
+                    email: '', 
+                    password: '', 
+                    section_id: selectedSection.value?.id,
+                    electives: ''
+                };
             }
             modals.student.show = true;
         };
@@ -305,7 +671,7 @@ createApp({
             formData.append('parent_id', filters.secondary);
 
             try {
-                const res = await fetch("{{ url_for('bulk_upload_students') }}", { method: 'POST', body: formData });
+                const res = await fetch("{{ url_for('sections.bulk_upload_students') }}", { method: 'POST', body: formData });
                 const result = await res.json();
                 if (!res.ok) throw new Error(result.message);
                 modals.upload.success = result.message;

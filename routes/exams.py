@@ -282,48 +282,70 @@ Return ONLY the JSON object, no additional text.
     
     return prompt
 
-def call_gemini_api(prompt):
-    """Call Gemini API to generate exam schedule."""
-    try:
-        api_key = os.getenv('GEMINI_API_KEY')
-        if not api_key:
-            raise ValueError("GEMINI_API_KEY not found in environment variables")
-        
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}"
-        
-        headers = {
-            'Content-Type': 'application/json',
-        }
-        
-        data = {
-            "contents": [{
-                "parts": [{
-                    "text": prompt
-                }]
+def call_gemini_api(prompt, max_retries=3):
+    """Call Gemini API to generate exam schedule with retry logic for rate limits."""
+    import time
+    
+    api_key = os.getenv('GEMINI_API_KEY')
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY not found in environment variables")
+    
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    
+    headers = {
+        'Content-Type': 'application/json',
+    }
+    
+    data = {
+        "contents": [{
+            "parts": [{
+                "text": prompt
             }]
-        }
-        
-        response = requests.post(url, headers=headers, json=data, timeout=60)
-        response.raise_for_status()
-        
-        result = response.json()
-        
-        if 'candidates' in result and len(result['candidates']) > 0:
-            content = result['candidates'][0]['content']['parts'][0]['text']
-            # Clean up the response to extract JSON
-            content = content.strip()
-            if content.startswith('```json'):
-                content = content[7:]
-            if content.endswith('```'):
-                content = content[:-3]
+        }]
+    }
+    
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(url, headers=headers, json=data, timeout=60)
             
-            return json.loads(content)
-        else:
-            raise ValueError("No valid response from Gemini API")
+            # Handle rate limit specifically
+            if response.status_code == 429:
+                if attempt < max_retries - 1:
+                    wait_time = (2 ** attempt) * 5  # Exponential backoff: 5s, 10s, 20s
+                    log_activity('warning', f'Rate limit hit, retrying in {wait_time} seconds (attempt {attempt + 1}/{max_retries})')
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    raise ValueError("Rate limit exceeded. Please wait a few minutes before trying again.")
             
-    except Exception as e:
-        log_activity('error', f'Gemini API call failed: {e}')
-        raise e
+            response.raise_for_status()
+            result = response.json()
+            
+            if 'candidates' in result and len(result['candidates']) > 0:
+                content = result['candidates'][0]['content']['parts'][0]['text']
+                # Clean up the response to extract JSON
+                content = content.strip()
+                if content.startswith('```json'):
+                    content = content[7:]
+                if content.endswith('```'):
+                    content = content[:-3]
+                
+                return json.loads(content)
+            else:
+                raise ValueError("No valid response from Gemini API")
+                
+        except requests.exceptions.RequestException as e:
+            if attempt < max_retries - 1:
+                wait_time = (2 ** attempt) * 2  # Shorter wait for network errors
+                log_activity('warning', f'Network error, retrying in {wait_time} seconds: {e}')
+                time.sleep(wait_time)
+                continue
+            else:
+                log_activity('error', f'Gemini API call failed after {max_retries} attempts: {e}')
+                raise ValueError(f"Failed to generate exam schedule: {e}")
+        except Exception as e:
+            log_activity('error', f'Gemini API call failed: {e}')
+            raise ValueError(f"Failed to generate exam schedule: {e}")
 
 @exams_bp.route('/api/seating/<int:exam_id>')
 def get_seating_plan(exam_id):
