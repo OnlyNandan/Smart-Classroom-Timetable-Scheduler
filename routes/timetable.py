@@ -149,8 +149,15 @@ def generate_gemini_prompt(teachers, sections, classrooms, subjects_or_courses, 
     # Enhanced section data with age-appropriate constraints
     sections_data = []
     for section in sections:
-        grade_level = section.grade.name if section.grade else 'Unknown'
-        is_primary = any(grade in grade_level.lower() for grade in ['1', '2', '3', '4', '5', 'ukg', 'lkg'])
+        # Ensure grade_level is a string
+        if section.grade:
+            grade_level = str(section.grade.name) if hasattr(section.grade, 'name') else 'Unknown'
+        else:
+            grade_level = 'Unknown'
+        
+        # Ensure grade_level is a string before calling .lower()
+        grade_level_str = str(grade_level).lower()
+        is_primary = any(grade in grade_level_str for grade in ['1', '2', '3', '4', '5', 'ukg', 'lkg'])
         
         section_info = {
             'id': section.id,
@@ -189,7 +196,7 @@ def generate_gemini_prompt(teachers, sections, classrooms, subjects_or_courses, 
                 'code': subject.code,
                 'weekly_hours': subject.weekly_hours,
                 'is_elective': subject.is_elective,
-                'stream': subject.stream.name if subject.stream else None,
+                'stream': str(subject.stream.name) if subject.stream and hasattr(subject.stream, 'name') else None,
                 'complexity': 'high' if 'math' in subject.name.lower() or 'physics' in subject.name.lower() else 'medium',
                 'best_periods': [1, 2] if 'math' in subject.name.lower() else [3, 4, 5],
                 'consecutive_periods': True if subject.weekly_hours > 4 else False,
@@ -202,7 +209,7 @@ def generate_gemini_prompt(teachers, sections, classrooms, subjects_or_courses, 
                 'code': subject.code,
                 'credits': subject.credits,
                 'course_type': subject.course_type,
-                'department': subject.department.name if subject.department else None,
+                'department': str(subject.department.name) if subject.department and hasattr(subject.department, 'name') else None,
                 'complexity': 'high' if 'math' in subject.name.lower() or 'physics' in subject.name.lower() else 'medium',
                 'best_periods': [1, 2] if 'math' in subject.name.lower() else [3, 4, 5],
                 'consecutive_periods': True if subject.credits > 3 else False
@@ -496,7 +503,7 @@ def generate_substitution_prompt(affected_entries, available_teachers, reason):
             'period': entry.period,
             'subject': entry.subject.name if entry.subject else entry.course.name,
             'section': entry.section.name,
-            'grade_level': entry.section.grade.name if entry.section.grade else 'Unknown'
+            'grade_level': str(entry.section.grade.name) if entry.section.grade and hasattr(entry.section.grade, 'name') else 'Unknown'
         }
         entries_data.append(entry_info)
     
