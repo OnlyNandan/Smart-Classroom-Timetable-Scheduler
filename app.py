@@ -24,6 +24,7 @@ def create_app(config_class=Config):
     from routes.sections import sections_bp
     from routes.timetable import timetable_bp
     from routes.analytics import analytics_bp
+    from routes.api import api_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(structure_bp)
@@ -33,6 +34,7 @@ def create_app(config_class=Config):
     app.register_blueprint(sections_bp)
     app.register_blueprint(timetable_bp)
     app.register_blueprint(analytics_bp)
+    app.register_blueprint(api_bp)
 
     # --- Application Hooks & Context Processors ---
     @app.before_request

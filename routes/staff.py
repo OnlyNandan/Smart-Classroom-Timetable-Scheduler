@@ -3,7 +3,7 @@ from sqlalchemy import exc
 
 from extensions import db
 from models import User, Teacher, Subject, Course
-from utils import hash_password, log_activity
+from utils import hash_password, log_activity, validate_json_request
 
 staff_bp = Blueprint('staff', __name__, url_prefix='/staff')
 
@@ -58,7 +58,9 @@ def handle_staff(teacher_id=None):
                 })
             return jsonify({"teachers": teacher_list})
 
-        data = request.json
+        data, error_response, status_code = validate_json_request()
+        if error_response:
+            return error_response, status_code
         
         if request.method == 'POST':
             if not data.get('password'): return jsonify({"message": "Password is required for new teachers."}), 400
