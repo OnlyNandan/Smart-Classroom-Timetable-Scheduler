@@ -1,165 +1,256 @@
-import json
-import os
-from datetime import datetime, timedelta, timezone
-from sqlalchemy import Text, ForeignKey
-from sqlalchemy.orm import relationship
-from sqlalchemy.types import TypeDecorator
-from extensions import db
+"""
+Database models for Edu-Sync AI
+"""
 
-# --- Custom JSON Type for SQLite ---
-class JsonEncodedDict(TypeDecorator):
-    """Enables JSON storage by encoding and decoding on the fly."""
-    impl = Text
-    cache_ok = True
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin
+from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 
-    def process_bind_param(self, value, dialect):
-        if value is None:
-            return None
-        return json.dumps(value)
+db = SQLAlchemy()
 
-    def process_result_value(self, value, dialect):
-        if value is None:
-            return None
-        return json.loads(value)
-
-# Use JsonEncodedDict for SQLite, and the native JSON for others.
-# We read the DB_URL from the environment to avoid needing an app context at import time.
-db_url = os.getenv('DATABASE_URL', 'sqlite:///timetable.db')
-json_type = JsonEncodedDict if 'sqlite' in db_url else db.JSON
-
-# --- Association Tables for Many-to-Many Relationships ---
-teacher_school_subjects_association = db.Table('teacher_school_subjects',
-    db.Column('teacher_id', db.Integer, db.ForeignKey('teacher.id'), primary_key=True),
-    db.Column('subject_id', db.Integer, db.ForeignKey('subject.id'), primary_key=True)
-)
-
-teacher_college_courses_association = db.Table('teacher_college_courses',
-    db.Column('teacher_id', db.Integer, db.ForeignKey('teacher.id'), primary_key=True),
-    db.Column('course_id', db.Integer, db.ForeignKey('course.id'), primary_key=True)
-)
-
-student_electives_association = db.Table('student_electives',
-    db.Column('student_id', db.Integer, db.ForeignKey('student.id'), primary_key=True),
-    db.Column('subject_id', db.Integer, db.ForeignKey('subject.id'), primary_key=True)
-)
-
-# --- CORE DATABASE MODELS ---
-
-class AppConfig(db.Model):
-    key = db.Column(db.String(50), primary_key=True)
-    value = db.Column(db.Text, nullable=False)
-
-class User(db.Model):
+class User(UserMixin, db.Model):
+    """User model for all roles (Admin, Teacher, Student, Parent)"""
+    __tablename__ = 'users'
+    
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=True)
-    password = db.Column(db.String(120), nullable=False)
-    role = db.Column(db.String(20), nullable=False) # admin, teacher, student
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(20), nullable=False)  # admin, teacher, student, parent
+    first_name = db.Column(db.String(50), nullable=False)
+    last_name = db.Column(db.String(50), nullable=False)
+    phone = db.Column(db.String(20))
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_login = db.Column(db.DateTime)
     
-    student = relationship("Student", back_populates="user", uselist=False, cascade="all, delete-orphan")
-    teacher = relationship("Teacher", back_populates="user", uselist=False, cascade="all, delete-orphan")
-
-# --- School Structure Models ---
-class SchoolGroup(db.Model): id = db.Column(db.Integer, primary_key=True); name = db.Column(db.String(100), nullable=False)
-class Grade(db.Model): id = db.Column(db.Integer, primary_key=True); name = db.Column(db.String(50), nullable=False); group_id = db.Column(db.Integer, db.ForeignKey('school_group.id')); group = relationship('SchoolGroup', backref=db.backref('grades', cascade="all, delete-orphan"))
-class Stream(db.Model): id = db.Column(db.Integer, primary_key=True); name = db.Column(db.String(100), nullable=False); group_id = db.Column(db.Integer, db.ForeignKey('school_group.id')); group = relationship('SchoolGroup', backref=db.backref('streams', cascade="all, delete-orphan"))
-class Subject(db.Model): id = db.Column(db.Integer, primary_key=True); name = db.Column(db.String(100), nullable=False); code = db.Column(db.String(20), unique=True, nullable=False); weekly_hours = db.Column(db.Integer); is_elective = db.Column(db.Boolean); stream_id = db.Column(db.Integer, db.ForeignKey('stream.id')); stream = relationship('Stream', backref='subjects')
-
-# --- College Structure Models ---
-class Semester(db.Model): id = db.Column(db.Integer, primary_key=True); name = db.Column(db.String(100), nullable=False)
-class Department(db.Model): id = db.Column(db.Integer, primary_key=True); name = db.Column(db.String(100), nullable=False); semester_id = db.Column(db.Integer, db.ForeignKey('semester.id')); semester = relationship('Semester', backref=db.backref('departments', cascade="all, delete-orphan"))
-class Course(db.Model): id = db.Column(db.Integer, primary_key=True); name = db.Column(db.String(100), nullable=False); code = db.Column(db.String(20), unique=True, nullable=False); credits = db.Column(db.Integer); course_type = db.Column(db.String(20)); department_id = db.Column(db.Integer, db.ForeignKey('department.id')); department = relationship('Department', backref='courses')
-
-# --- People & Places ---
-class Student(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True, nullable=False)
-    full_name = db.Column(db.String(120), nullable=False)
-    section_id = db.Column(db.Integer, db.ForeignKey('student_section.id'))
-    user = relationship("User", back_populates="student")
-    electives = relationship("Subject", secondary=student_electives_association, backref="students")
+    # Relationships
+    teacher_profile = db.relationship('Teacher', backref='user', uselist=False, cascade='all, delete-orphan')
+    student_profile = db.relationship('Student', backref='user', uselist=False, cascade='all, delete-orphan')
+    parent_profile = db.relationship('Parent', backref='user', uselist=False, cascade='all, delete-orphan')
+    
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+    
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+    
+    def get_full_name(self):
+        return f"{self.first_name} {self.last_name}"
 
 class Teacher(db.Model):
+    """Teacher profile with qualifications and workload limits"""
+    __tablename__ = 'teachers'
+    
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True, nullable=False)
-    full_name = db.Column(db.String(120), nullable=False)
-    max_weekly_hours = db.Column(db.Integer, nullable=False, default=20)
-    user = relationship("User", back_populates="teacher")
-    subjects = relationship("Subject", secondary=teacher_school_subjects_association, backref="teachers_school")
-    courses = relationship("Course", secondary=teacher_college_courses_association, backref="teachers_college")
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    employee_id = db.Column(db.String(20), unique=True, nullable=False)
+    qualifications = db.Column(db.Text)
+    max_hours_week = db.Column(db.Integer, default=40)
+    specialization = db.Column(db.String(100))
+    joining_date = db.Column(db.Date)
+    is_available = db.Column(db.Boolean, default=True)
+    
+    # Relationships
+    subjects = db.relationship('Subject', backref='teacher')
+    timetable_entries = db.relationship('TimetableEntry', backref='teacher')
+    attendance_records = db.relationship('Attendance', backref='teacher')
 
-class StudentSection(db.Model):
+class Student(db.Model):
+    """Student profile with academic information"""
+    __tablename__ = 'students'
+    
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), nullable=False)
-    capacity = db.Column(db.Integer, nullable=False)
-    grade_id = db.Column(db.Integer, db.ForeignKey('grade.id'), nullable=True)
-    department_id = db.Column(db.Integer, db.ForeignKey('department.id'), nullable=True)
-    students = relationship("Student", backref="section")
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    student_id = db.Column(db.String(20), unique=True, nullable=False)
+    admission_number = db.Column(db.String(20), unique=True)
+    grade = db.Column(db.String(10), nullable=False)  # UKG, 1, 2, ..., 12, College
+    section = db.Column(db.String(10), nullable=False)  # A, B, C, etc.
+    date_of_birth = db.Column(db.Date)
+    admission_date = db.Column(db.Date, default=datetime.utcnow)
+    parent_id = db.Column(db.Integer, db.ForeignKey('parents.id'))
+    is_active = db.Column(db.Boolean, default=True)
+    
+    # Relationships
+    timetable_entries = db.relationship('TimetableEntry', backref='section_student')
+    exam_assignments = db.relationship('ExamAssignment', backref='student')
+    elective_selections = db.relationship('ElectiveSelection', backref='student')
 
-class Classroom(db.Model):
+class Parent(db.Model):
+    """Parent profile"""
+    __tablename__ = 'parents'
+    
     id = db.Column(db.Integer, primary_key=True)
-    room_id = db.Column(db.String(50), unique=True, nullable=False)
-    capacity = db.Column(db.Integer, nullable=False)
-    features = db.Column(json_type, nullable=False, default=lambda: [])
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    occupation = db.Column(db.String(100))
+    address = db.Column(db.Text)
+    emergency_contact = db.Column(db.String(20))
+    
+    # Relationships
+    children = db.relationship('Student', backref='parent')
 
-# --- Core Functional Models ---
-class TimetableEntry(db.Model):
+class Subject(db.Model):
+    """Subject/Course information"""
+    __tablename__ = 'subjects'
+    
     id = db.Column(db.Integer, primary_key=True)
-    day = db.Column(db.String(10), nullable=False)
-    period = db.Column(db.Integer, nullable=False)
-    teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
-    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'), nullable=True)
-    course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=True)
-    section_id = db.Column(db.Integer, db.ForeignKey('student_section.id'), nullable=False)
-    classroom_id = db.Column(db.Integer, db.ForeignKey('classroom.id'), nullable=False)
-
-class AttendanceRecord(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
-    entry_id = db.Column(db.Integer, db.ForeignKey('timetable_entry.id'), nullable=False)
-    date = db.Column(db.Date, nullable=False)
-    status = db.Column(db.String(10), nullable=False)
-
-class Exam(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), unique=True, nullable=False)
     name = db.Column(db.String(100), nullable=False)
-    date = db.Column(db.DateTime, nullable=False)
-    duration = db.Column(db.Integer, nullable=False, default=180)  # Duration in minutes
-    type = db.Column(db.String(20), nullable=False, default='final')  # final, midterm, quiz
-    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'), nullable=True)
-    course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=True)
+    description = db.Column(db.Text)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('teachers.id'))
+    weekly_hours = db.Column(db.Integer, nullable=False)
+    grade_level = db.Column(db.String(20), nullable=False)  # UKG-12, College
+    requires_lab = db.Column(db.Boolean, default=False)
+    is_elective = db.Column(db.Boolean, default=False)
+    max_students = db.Column(db.Integer)
+    is_active = db.Column(db.Boolean, default=True)
     
     # Relationships
-    subject = relationship("Subject", backref="exams")
-    course = relationship("Course", backref="exams")
-    seating_plans = relationship("ExamSeating", backref="exam", cascade="all, delete-orphan")
+    timetable_entries = db.relationship('TimetableEntry', backref='subject')
+    exam_schedules = db.relationship('ExamSchedule', backref='subject')
 
-class ExamSeating(db.Model):
+class Room(db.Model):
+    """Classroom/Lab information"""
+    __tablename__ = 'rooms'
+    
     id = db.Column(db.Integer, primary_key=True)
-    exam_id = db.Column(db.Integer, db.ForeignKey('exam.id'), nullable=False)
-    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
-    classroom_id = db.Column(db.Integer, db.ForeignKey('classroom.id'), nullable=False)
-    seat_number = db.Column(db.String(10))
+    room_number = db.Column(db.String(20), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    capacity = db.Column(db.Integer, nullable=False)
+    room_type = db.Column(db.String(20), nullable=False)  # Classroom, Lab, Library, Sports
+    floor = db.Column(db.Integer)
+    building = db.Column(db.String(50))
+    equipment = db.Column(db.Text)  # JSON string of available equipment
+    is_available = db.Column(db.Boolean, default=True)
     
     # Relationships
-    student = relationship("Student", backref="exam_seatings")
-    classroom = relationship("Classroom", backref="exam_seatings")
+    timetable_entries = db.relationship('TimetableEntry', backref='room')
+    exam_assignments = db.relationship('ExamAssignment', backref='room')
 
-# --- System & Logging ---
-class ActivityLog(db.Model):
-    id = db.Column(db.Integer, primary_key=True); timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc)); level = db.Column(db.String(20)); message = db.Column(db.String(255))
-    @property
-    def time_ago(self):
-        timestamp_to_compare = self.timestamp
-        if timestamp_to_compare.tzinfo is None:
-            timestamp_to_compare = timestamp_to_compare.replace(tzinfo=timezone.utc)
-            
-        delta = datetime.now(timezone.utc) - timestamp_to_compare
-        if delta < timedelta(minutes=1): return "just now"
-        elif delta < timedelta(hours=1): return f"{delta.seconds // 60} minutes ago"
-        elif delta < timedelta(days=1): return f"{delta.seconds // 3600} hours ago"
-        else: return f"{delta.days} days ago"
+class TimetableEntry(db.Model):
+    """Individual timetable entries"""
+    __tablename__ = 'timetable_entries'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    day_of_week = db.Column(db.String(10), nullable=False)  # Monday, Tuesday, etc.
+    time_slot = db.Column(db.String(20), nullable=False)  # 09:00-10:00
+    subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('teachers.id'), nullable=False)
+    room_id = db.Column(db.Integer, db.ForeignKey('rooms.id'), nullable=False)
+    grade = db.Column(db.String(10), nullable=False)
+    section = db.Column(db.String(10), nullable=False)
+    timetable_version = db.Column(db.String(50), nullable=False)  # To track different versions
+    is_manual_override = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Index for performance
+    __table_args__ = (
+        db.Index('idx_timetable_lookup', 'day_of_week', 'time_slot', 'grade', 'section'),
+        db.Index('idx_teacher_schedule', 'teacher_id', 'day_of_week', 'time_slot'),
+        db.Index('idx_room_schedule', 'room_id', 'day_of_week', 'time_slot'),
+    )
 
-class SystemMetric(db.Model):
-    id = db.Column(db.Integer, primary_key=True); date = db.Column(db.Date, default=lambda: datetime.now(timezone.utc).date()); key = db.Column(db.String(50)); value = db.Column(db.Integer)
+class ExamSchedule(db.Model):
+    """Exam scheduling information"""
+    __tablename__ = 'exam_schedules'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
+    exam_date = db.Column(db.Date, nullable=False)
+    start_time = db.Column(db.Time, nullable=False)
+    end_time = db.Column(db.Time, nullable=False)
+    duration_minutes = db.Column(db.Integer, nullable=False)
+    grade = db.Column(db.String(10), nullable=False)
+    exam_type = db.Column(db.String(20), default='Final')  # Mid-term, Final, Quiz
+    total_students = db.Column(db.Integer)
+    is_seating_plan_generated = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class ExamAssignment(db.Model):
+    """Student exam room and seat assignments"""
+    __tablename__ = 'exam_assignments'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    exam_schedule_id = db.Column(db.Integer, db.ForeignKey('exam_schedules.id'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    room_id = db.Column(db.Integer, db.ForeignKey('rooms.id'), nullable=False)
+    seat_number = db.Column(db.String(10))  # A1, B2, etc.
+    row = db.Column(db.Integer)
+    column = db.Column(db.Integer)
+    
+    # Relationships
+    exam_schedule = db.relationship('ExamSchedule', backref='assignments')
+
+class ElectiveSelection(db.Model):
+    """Student elective subject selections"""
+    __tablename__ = 'elective_selections'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
+    academic_year = db.Column(db.String(10), nullable=False)
+    semester = db.Column(db.String(20))
+    is_approved = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    subject = db.relationship('Subject', backref='elective_selections')
+
+class Attendance(db.Model):
+    """Attendance records"""
+    __tablename__ = 'attendance'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('teachers.id'), nullable=False)
+    subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    status = db.Column(db.String(10), nullable=False)  # Present, Absent, Late
+    remarks = db.Column(db.Text)
+    marked_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Notification(db.Model):
+    """System notifications"""
+    __tablename__ = 'notifications'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    recipient_type = db.Column(db.String(20), nullable=False)  # all, admin, teacher, student, parent
+    recipient_id = db.Column(db.Integer)  # Specific user ID if targeted
+    notification_type = db.Column(db.String(20), default='info')  # info, warning, error, success
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime)
+
+class TimetableVersion(db.Model):
+    """Track different timetable versions"""
+    __tablename__ = 'timetable_versions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    version_name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    academic_year = db.Column(db.String(10), nullable=False)
+    semester = db.Column(db.String(20))
+    is_active = db.Column(db.Boolean, default=False)
+    generated_by = db.Column(db.String(20), default='AI')  # AI, Manual, Import
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+
+class AuditLog(db.Model):
+    """Audit trail for all major actions"""
+    __tablename__ = 'audit_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    action = db.Column(db.String(100), nullable=False)
+    resource_type = db.Column(db.String(50))
+    resource_id = db.Column(db.String(50))
+    details = db.Column(db.Text)  # JSON string of action details
+    ip_address = db.Column(db.String(45))
+    user_agent = db.Column(db.Text)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    user = db.relationship('User', backref='audit_logs')

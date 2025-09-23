@@ -1,0 +1,13 @@
+username,email,first_name,last_name,role,phone,student_id,grade,section,employee_id,specialization,qualifications
+student1,student1@school.com,Ravi,Kumar,student,+919876543210,S001,10,A,,,,
+student2,student2@school.com,Priya,Sharma,student,+919876543211,S002,10,A,,,,
+student3,student3@school.com,Amit,Singh,student,+919876543212,S003,10,B,,,,
+student4,student4@school.com,Sunita,Patel,student,+919876543213,S004,10,B,,,,
+student5,student5@school.com,Rajesh,Gupta,student,+919876543214,S005,11,A,,,,
+teacher1,teacher1@school.com,Dr. Sharma,Mathematics,teacher,+919876543220,,,T001,Mathematics,M.Sc Mathematics, Ph.D Mathematics
+teacher2,teacher2@school.com,Prof. Kumar,Physics,teacher,+919876543221,,,T002,Physics,M.Sc Physics, B.Ed
+teacher3,teacher3@school.com,Ms. Singh,Chemistry,teacher,+919876543222,,,T003,Chemistry,M.Sc Chemistry, B.Ed
+teacher4,teacher4@school.com,Mr. Patel,English,teacher,+919876543223,,,T004,English,M.A English, B.Ed
+teacher5,teacher5@school.com,Dr. Gupta,Biology,teacher,+919876543224,,,T005,Biology,M.Sc Biology, Ph.D Biology
+parent1,parent1@email.com,Mr. Kumar,Parent,parent,+919876543230,,,,,,
+parent2,parent2@email.com,Mrs. Sharma,Parent,parent,+919876543231,,,,,,

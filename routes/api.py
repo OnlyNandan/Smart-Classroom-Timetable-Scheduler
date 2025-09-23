@@ -1,377 +1,457 @@
-from flask import Blueprint, jsonify, request, session, g
-from sqlalchemy import exc
+"""
+RESTful API routes for Edu-Sync AI
+Mobile app support and external integrations
+"""
 
-from extensions import db
-from models import SchoolGroup, Grade, Stream, Semester, Department, Subject, Course, Teacher, User
-from utils import log_activity, validate_json_request, hash_password
+from flask import Blueprint, request, jsonify, current_app
+from flask_login import login_required, current_user
+from models import db, User, Teacher, Student, Parent, Subject, Room, TimetableEntry, ExamSchedule, ExamAssignment, Attendance
+from datetime import datetime, date
+import json
 
-api_bp = Blueprint('api', __name__, url_prefix='/api')
+api_bp = Blueprint('api', __name__)
 
-@api_bp.route('/structure/<mode>', methods=['GET', 'POST'])
-@api_bp.route('/structure/<mode>/<int:item_id>', methods=['PUT', 'DELETE'])
-def handle_structure_items(mode, item_id=None):
-    """API endpoint for handling all structure CRUD operations - handles /api/structure/college calls"""
-    if 'user_id' not in session:
-        return jsonify({"message": "Unauthorized"}), 401
-    
+# API Authentication decorator
+def api_auth_required(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return jsonify({'error': 'Authentication required'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+# API Response helpers
+def success_response(data=None, message="Success"):
+    response = {'success': True, 'message': message}
+    if data is not None:
+        response['data'] = data
+    return jsonify(response)
+
+def error_response(message="Error", status_code=400):
+    return jsonify({'success': False, 'error': message}), status_code
+
+# User Profile API
+@api_bp.route('/profile', methods=['GET', 'PUT'])
+@api_auth_required
+def profile():
     if request.method == 'GET':
-        items_data = []
-        if mode == 'school':
-            groups = SchoolGroup.query.options(db.joinedload('*')).all()
-            for group in groups:
-                items_data.append({
-                    "id": group.id, "name": group.name,
-                    "grades": [{"id": g.id, "name": g.name} for g in group.grades],
-                    "streams": [{"id": s.id, "name": s.name} for s in group.streams]
-                })
-        elif mode == 'college':
-            semesters = Semester.query.options(db.joinedload('*')).all()
-            for sem in semesters:
-                items_data.append({
-                    "id": sem.id, "name": sem.name,
-                    "departments": [{"id": d.id, "name": d.name} for d in sem.departments]
-                })
-        return jsonify({"items": items_data})
-    
-    # Handle POST, PUT, DELETE operations
-    if request.method in ['POST', 'PUT']:
-        data, error_response, status_code = validate_json_request()
-        if error_response:
-            return error_response, status_code
-    
-    try:
-        if request.method == 'POST':
-            if mode == 'school':
-                new_group = SchoolGroup(name=data['name'])
-                db.session.add(new_group)
-                db.session.flush()
-                for grade in data.get('grades', []):
-                    if grade.get('name'):
-                        db.session.add(Grade(name=grade['name'], group_id=new_group.id))
-                for stream in data.get('streams', []):
-                    if stream.get('name'):
-                        db.session.add(Stream(name=stream['name'], group_id=new_group.id))
-                db.session.commit()
-                log_activity('info', f"School group '{data['name']}' created.")
-                return jsonify({"message": "Group created successfully!"})
-            else:  # college
-                new_sem = Semester(name=data['name'])
-                db.session.add(new_sem)
-                db.session.flush()
-                for dept in data.get('departments', []):
-                    if dept.get('name'):
-                        db.session.add(Department(name=dept['name'], semester_id=new_sem.id))
-                db.session.commit()
-                log_activity('info', f"Semester '{data['name']}' created.")
-                return jsonify({"message": "Semester created successfully!"})
+        profile_data = {
+            'id': current_user.id,
+            'username': current_user.username,
+            'email': current_user.email,
+            'first_name': current_user.first_name,
+            'last_name': current_user.last_name,
+            'role': current_user.role,
+            'phone': current_user.phone
+        }
         
-        elif request.method == 'PUT':
-            if mode == 'school':
-                group = SchoolGroup.query.get_or_404(item_id)
-                group.name = data['name']
-                
-                # Sync Grades
-                existing_grades = {g.id: g for g in group.grades}
-                updated_grade_ids = {int(g['id']) for g in data['grades'] if g.get('id') and not str(g['id']).startswith('new-')}
-                for gid_to_del in existing_grades.keys() - updated_grade_ids:
-                    db.session.delete(existing_grades[gid_to_del])
-                for g_data in data['grades']:
-                    gid = g_data.get('id')
-                    if gid and not str(gid).startswith('new-'):
-                        existing_grades[int(gid)].name = g_data['name']
-                    elif g_data.get('name'):
-                        db.session.add(Grade(name=g_data['name'], group_id=group.id))
-                
-                # Sync Streams
-                existing_streams = {s.id: s for s in group.streams}
-                updated_stream_ids = {int(s['id']) for s in data['streams'] if s.get('id') and not str(s['id']).startswith('new-')}
-                for sid_to_del in existing_streams.keys() - updated_stream_ids:
-                    db.session.delete(existing_streams[sid_to_del])
-                for s_data in data['streams']:
-                    sid = s_data.get('id')
-                    if sid and not str(sid).startswith('new-'):
-                        existing_streams[int(sid)].name = s_data['name']
-                    elif s_data.get('name'):
-                        db.session.add(Stream(name=s_data['name'], group_id=group.id))
-                
-                db.session.commit()
-                log_activity('info', f"School group '{group.name}' updated.")
-                return jsonify({"message": "Group updated successfully!"})
-            else:  # college
-                semester = Semester.query.get_or_404(item_id)
-                semester.name = data['name']
-                
-                existing_depts = {d.id: d for d in semester.departments}
-                updated_dept_ids = {int(d['id']) for d in data['departments'] if d.get('id') and not str(d['id']).startswith('new-')}
-                for did_to_del in existing_depts.keys() - updated_dept_ids:
-                    db.session.delete(existing_depts[did_to_del])
-                for d_data in data['departments']:
-                    did = d_data.get('id')
-                    if did and not str(did).startswith('new-'):
-                        existing_depts[int(did)].name = d_data['name']
-                    elif d_data.get('name'):
-                        db.session.add(Department(name=d_data['name'], semester_id=semester.id))
-                
-                db.session.commit()
-                log_activity('info', f"Semester '{semester.name}' updated.")
-                return jsonify({"message": "Semester updated successfully!"})
+        # Add role-specific profile data
+        if current_user.role == 'teacher' and current_user.teacher_profile:
+            teacher = current_user.teacher_profile
+            profile_data.update({
+                'employee_id': teacher.employee_id,
+                'specialization': teacher.specialization,
+                'qualifications': teacher.qualifications,
+                'max_hours_week': teacher.max_hours_week
+            })
+        elif current_user.role == 'student' and current_user.student_profile:
+            student = current_user.student_profile
+            profile_data.update({
+                'student_id': student.student_id,
+                'grade': student.grade,
+                'section': student.section,
+                'admission_number': student.admission_number
+            })
+        elif current_user.role == 'parent' and current_user.parent_profile:
+            parent = current_user.parent_profile
+            profile_data.update({
+                'occupation': parent.occupation,
+                'address': parent.address
+            })
         
-        elif request.method == 'DELETE':
-            if mode == 'school':
-                group = SchoolGroup.query.get_or_404(item_id)
-                log_activity('warning', f"School group '{group.name}' deleted.")
-                db.session.delete(group)
-            else:  # college
-                semester = Semester.query.get_or_404(item_id)
-                log_activity('warning', f"Semester '{semester.name}' deleted.")
-                db.session.delete(semester)
-            db.session.commit()
-            return jsonify({"message": "Item deleted successfully!"})
+        return success_response(profile_data)
+    
+    elif request.method == 'PUT':
+        data = request.get_json()
+        
+        try:
+            current_user.first_name = data.get('first_name', current_user.first_name)
+            current_user.last_name = data.get('last_name', current_user.last_name)
+            current_user.phone = data.get('phone', current_user.phone)
             
-    except exc.IntegrityError:
-        db.session.rollback()
-        return jsonify({"message": "Database integrity error. Check for duplicate names or invalid IDs."}), 400
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"message": f"An unexpected error occurred: {e}"}), 500
-    
-    return jsonify({"message": "Method not allowed"}), 405
+            # Update role-specific profile
+            if current_user.role == 'teacher' and current_user.teacher_profile:
+                teacher = current_user.teacher_profile
+                teacher.specialization = data.get('specialization', teacher.specialization)
+                teacher.qualifications = data.get('qualifications', teacher.qualifications)
+            elif current_user.role == 'parent' and current_user.parent_profile:
+                parent = current_user.parent_profile
+                parent.occupation = data.get('occupation', parent.occupation)
+                parent.address = data.get('address', parent.address)
+            
+            db.session.commit()
+            return success_response(message="Profile updated successfully")
+            
+        except Exception as e:
+            db.session.rollback()
+            return error_response(f"Update failed: {str(e)}", 500)
 
-@api_bp.route('/subjects/parents/<mode>', methods=['GET'])
-def get_parent_data(mode):
-    """API endpoint for getting parent data for subjects - handles /api/subjects/parents/college calls"""
-    if 'user_id' not in session:
-        return jsonify({"message": "Unauthorized"}), 401
-    
-    parents = []
-    if mode == 'school':
-        groups = SchoolGroup.query.options(db.joinedload(SchoolGroup.streams)).all()
-        for group in groups:
-            parents.append({
-                "id": group.id,
-                "name": group.name,
-                "children": [{"id": s.id, "name": s.name} for s in group.streams]
-            })
-    elif mode == 'college':
-        semesters = Semester.query.options(db.joinedload(Semester.departments)).all()
-        for sem in semesters:
-            parents.append({
-                "id": sem.id,
-                "name": sem.name,
-                "children": [{"id": d.id, "name": d.name} for d in sem.departments]
-            })
-    return jsonify({"parents": parents})
-
-@api_bp.route('/staff', methods=['GET', 'POST'])
-@api_bp.route('/staff/<int:teacher_id>', methods=['PUT', 'DELETE'])
-def handle_staff(teacher_id=None):
-    """API endpoint for handling all staff CRUD operations - handles /api/staff calls"""
-    if 'user_id' not in session:
-        return jsonify({"message": "Unauthorized"}), 401
-
+# Timetable API
+@api_bp.route('/timetable', methods=['GET'])
+@api_auth_required
+def get_timetable():
     try:
-        if request.method == 'GET':
-            teachers = Teacher.query.options(
-                db.joinedload(Teacher.user), 
-                db.joinedload(Teacher.subjects),
-                db.joinedload(Teacher.courses)
+        if current_user.role == 'teacher':
+            teacher = Teacher.query.filter_by(user_id=current_user.id).first()
+            if not teacher:
+                return error_response("Teacher profile not found", 404)
+            
+            entries = TimetableEntry.query.filter_by(teacher_id=teacher.id).all()
+            
+        elif current_user.role == 'student':
+            student = Student.query.filter_by(user_id=current_user.id).first()
+            if not student:
+                return error_response("Student profile not found", 404)
+            
+            entries = TimetableEntry.query.filter_by(
+                grade=student.grade, 
+                section=student.section
             ).all()
             
-            teacher_list = []
-            for t in teachers:
-                subjects = [{"id": s.id, "name": s.name} for s in t.subjects]
-                courses = [{"id": c.id, "name": c.name} for c in t.courses]
-                all_teachable = subjects + courses
-
-                teacher_list.append({
-                    "id": t.id,
-                    "full_name": t.full_name,
-                    "email": t.user.email,
-                    "username": t.user.username,
-                    "max_weekly_hours": t.max_weekly_hours,
-                    "subjects": all_teachable
-                })
-            return jsonify({"teachers": teacher_list})
-
-        # Handle POST, PUT operations
-        if request.method in ['POST', 'PUT']:
-            data, error_response, status_code = validate_json_request()
-            if error_response:
-                return error_response, status_code
+        elif current_user.role == 'parent':
+            parent = Parent.query.filter_by(user_id=current_user.id).first()
+            if not parent:
+                return error_response("Parent profile not found", 404)
+            
+            # Get children's timetables
+            children = Student.query.filter_by(parent_id=parent.id).all()
+            entries = []
+            for child in children:
+                child_entries = TimetableEntry.query.filter_by(
+                    grade=child.grade, 
+                    section=child.section
+                ).all()
+                entries.extend(child_entries)
         
-        if request.method == 'POST':
-            if not data.get('password'): 
-                return jsonify({"message": "Password is required for new teachers."}), 400
-            if User.query.filter_by(username=data['username']).first(): 
-                return jsonify({"message": "Username already exists."}), 409
-            if User.query.filter_by(email=data['email']).first(): 
-                return jsonify({"message": "Email already exists."}), 409
-
-            new_user = User(username=data['username'], email=data['email'], password=hash_password(data['password']), role='teacher')
-            db.session.add(new_user)
-            db.session.flush()
-
-            new_teacher = Teacher(full_name=data['full_name'], max_weekly_hours=data['max_weekly_hours'], user_id=new_user.id)
-            db.session.add(new_teacher)
-            db.session.flush()
-
-            if g.app_mode == 'school':
-                new_teacher.subjects = Subject.query.filter(Subject.id.in_(data.get('subject_ids', []))).all()
-            else:
-                new_teacher.courses = Course.query.filter(Course.id.in_(data.get('subject_ids', []))).all()
-
-            db.session.commit()
-            log_activity('info', f"Teacher '{data['full_name']}' created.")
-            return jsonify({"message": "Teacher created successfully!"})
-        
-        teacher = Teacher.query.get_or_404(teacher_id)
-        
-        if request.method == 'PUT':
-            user = teacher.user
-            if user.username != data['username'] and User.query.filter_by(username=data['username']).first(): 
-                return jsonify({"message": "Username already exists."}), 409
-            if user.email != data['email'] and User.query.filter_by(email=data['email']).first(): 
-                return jsonify({"message": "Email already exists."}), 409
-            
-            user.username = data['username']
-            user.email = data['email']
-            if data.get('password'): 
-                user.password = hash_password(data['password'])
-            
-            teacher.full_name = data['full_name']
-            teacher.max_weekly_hours = data['max_weekly_hours']
-
-            if g.app_mode == 'school':
-                teacher.subjects = Subject.query.filter(Subject.id.in_(data.get('subject_ids', []))).all()
-                teacher.courses = []
-            else:
-                teacher.courses = Course.query.filter(Course.id.in_(data.get('subject_ids', []))).all()
-                teacher.subjects = []
-
-            db.session.commit()
-            log_activity('info', f"Teacher '{teacher.full_name}' updated.")
-            return jsonify({"message": "Teacher updated successfully!"})
-
-        if request.method == 'DELETE':
-            user_to_delete = teacher.user
-            db.session.delete(teacher)
-            db.session.delete(user_to_delete)
-            db.session.commit()
-            log_activity('warning', f"Teacher '{teacher.full_name}' deleted.")
-            return jsonify({"message": "Teacher deleted successfully!"})
-
-    except exc.IntegrityError as e:
-        db.session.rollback()
-        return jsonify({"message": "Database integrity error occurred."}), 400
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"message": f"An unexpected error occurred: {e}"}), 500
-
-@api_bp.route('/subjects/<mode>', methods=['GET', 'POST'])
-@api_bp.route('/subjects/<mode>/<int:item_id>', methods=['PUT', 'DELETE'])
-def handle_subjects(mode, item_id=None):
-    """API endpoint for handling all subjects CRUD operations - handles /api/subjects/college calls"""
-    if 'user_id' not in session:
-        return jsonify({"message": "Unauthorized"}), 401
-    
-    try:
-        if request.method == 'GET':
-            parent_id = request.args.get('parent_id', type=int)
-            if not parent_id:
-                return jsonify({"items": []})
-            
-            response = {"items": []}
-            if mode == 'school':
-                subjects = Subject.query.filter_by(stream_id=parent_id).all()
-                response['items'] = [
-                    {"id": s.id, "name": s.name, "code": s.code, "weekly_hours": s.weekly_hours, "is_elective": s.is_elective, "stream_id": s.stream_id} for s in subjects
-                ]
-            elif mode == 'college':
-                courses = Course.query.filter_by(department_id=parent_id).all()
-                response['items'] = [
-                    {"id": c.id, "name": c.name, "code": c.code, "credits": c.credits, "course_type": c.course_type, "department_id": c.department_id} for c in courses
-                ]
-            return jsonify(response)
-
-        # Handle POST, PUT operations
-        if request.method in ['POST', 'PUT']:
-            data, error_response, status_code = validate_json_request()
-            if error_response:
-                return error_response, status_code
-
-        if request.method == 'POST':
-            code = data.get('code')
-            if not code: 
-                return jsonify({"message": "Code is a required field."}), 400
-
-            if mode == 'school':
-                if Subject.query.filter_by(code=code).first():
-                    return jsonify({"message": f"Subject code '{code}' already exists."}), 409
-                new_item = Subject(name=data['name'], code=code, weekly_hours=data['weekly_hours'], is_elective=data.get('is_elective', False), stream_id=data['stream_id'])
-                db.session.add(new_item)
-            else:  # college
-                if Course.query.filter_by(code=code).first():
-                    return jsonify({"message": f"Course code '{code}' already exists."}), 409
-                new_item = Course(name=data['name'], code=code, credits=data['credits'], course_type=data['course_type'], department_id=data['department_id'])
-                db.session.add(new_item)
-            
-            log_activity('info', f"{'Subject' if mode == 'school' else 'Course'} '{data['name']}' created.")
-            message = f"{'Subject' if mode == 'school' else 'Course'} created successfully!"
-
-        else:  # PUT or DELETE
-            item = Subject.query.get_or_404(item_id) if mode == 'school' else Course.query.get_or_404(item_id)
-
-            if request.method == 'PUT':
-                new_code = data.get('code')
-                if not new_code: 
-                    return jsonify({"message": "Code is a required field."}), 400
-                if item.code != new_code:
-                    if (mode == 'school' and Subject.query.filter_by(code=new_code).first()) or \
-                       (mode == 'college' and Course.query.filter_by(code=new_code).first()):
-                        return jsonify({"message": f"{'Subject' if mode == 'school' else 'Course'} code '{new_code}' already exists."}), 409
-                
-                item.name = data['name']
-                item.code = new_code
-                if mode == 'school':
-                    item.weekly_hours = data['weekly_hours']
-                    item.is_elective = data.get('is_elective', False)
-                else:  # college
-                    item.credits = data['credits']
-                    item.course_type = data['course_type']
-                
-                log_activity('info', f"{'Subject' if mode == 'school' else 'Course'} '{item.name}' updated.")
-                message = f"{'Subject' if mode == 'school' else 'Course'} updated successfully!"
-
-            elif request.method == 'DELETE':
-                db.session.delete(item)
-                log_activity('warning', f"{'Subject' if mode == 'school' else 'Course'} '{item.name}' deleted.")
-                message = f"{'Subject' if mode == 'school' else 'Course'} deleted successfully!"
-
-        db.session.commit()
-        return jsonify({"message": message})
-
-    except exc.IntegrityError:
-        db.session.rollback()
-        return jsonify({"message": "Database integrity error. Check for duplicate codes or invalid IDs."}), 400
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"message": f"An unexpected error occurred: {e}"}), 500
-
-@api_bp.route('/staff/all_subjects', methods=['GET'])
-def get_all_subjects_for_staff():
-    """API endpoint for getting all subjects for staff - handles /api/staff/all_subjects calls"""
-    if 'user_id' not in session:
-        return jsonify({"message": "Unauthorized"}), 401
-    
-    try:
-        subjects_list = []
-        if g.app_mode == 'school':
-            subjects = Subject.query.order_by(Subject.name).all()
-            subjects_list = [{"id": s.id, "name": s.name, "code": s.code, "type": "subject"} for s in subjects]
         else:
-            courses = Course.query.order_by(Course.name).all()
-            subjects_list = [{"id": c.id, "name": c.name, "code": c.code, "type": "course"} for c in courses]
-            
-        return jsonify({"subjects": subjects_list})
+            return error_response("Invalid role", 403)
+        
+        # Format timetable data
+        timetable_data = []
+        for entry in entries:
+            timetable_data.append({
+                'id': entry.id,
+                'day': entry.day_of_week,
+                'time_slot': entry.time_slot,
+                'subject': {
+                    'id': entry.subject.id,
+                    'name': entry.subject.name,
+                    'code': entry.subject.code
+                },
+                'teacher': {
+                    'id': entry.teacher.id,
+                    'name': entry.teacher.user.get_full_name()
+                },
+                'room': {
+                    'id': entry.room.id,
+                    'number': entry.room.room_number,
+                    'name': entry.room.name
+                },
+                'grade': entry.grade,
+                'section': entry.section
+            })
+        
+        return success_response(timetable_data)
+        
     except Exception as e:
-        return jsonify({"message": f"Error fetching subjects: {str(e)}"}), 500
+        return error_response(f"Failed to fetch timetable: {str(e)}", 500)
+
+# Exam Schedule API
+@api_bp.route('/exams', methods=['GET'])
+@api_auth_required
+def get_exams():
+    try:
+        if current_user.role == 'student':
+            student = Student.query.filter_by(user_id=current_user.id).first()
+            if not student:
+                return error_response("Student profile not found", 404)
+            
+            exams = ExamSchedule.query.filter_by(grade=student.grade).all()
+            assignments = ExamAssignment.query.filter_by(student_id=student.id).all()
+            
+        elif current_user.role == 'parent':
+            parent = Parent.query.filter_by(user_id=current_user.id).first()
+            if not parent:
+                return error_response("Parent profile not found", 404)
+            
+            children = Student.query.filter_by(parent_id=parent.id).all()
+            exams = []
+            assignments = []
+            
+            for child in children:
+                child_exams = ExamSchedule.query.filter_by(grade=child.grade).all()
+                exams.extend(child_exams)
+                
+                child_assignments = ExamAssignment.query.filter_by(student_id=child.id).all()
+                assignments.extend(child_assignments)
+        
+        else:
+            return error_response("Invalid role", 403)
+        
+        # Format exam data
+        exam_data = []
+        assignment_map = {a.exam_schedule_id: a for a in assignments}
+        
+        for exam in exams:
+            assignment = assignment_map.get(exam.id)
+            exam_info = {
+                'id': exam.id,
+                'subject': {
+                    'id': exam.subject.id,
+                    'name': exam.subject.name,
+                    'code': exam.subject.code
+                },
+                'date': exam.exam_date.isoformat(),
+                'start_time': exam.start_time.strftime('%H:%M'),
+                'end_time': exam.end_time.strftime('%H:%M'),
+                'duration_minutes': exam.duration_minutes,
+                'exam_type': exam.exam_type,
+                'grade': exam.grade
+            }
+            
+            if assignment:
+                exam_info['assignment'] = {
+                    'room_id': assignment.room_id,
+                    'room_number': assignment.room.room_number,
+                    'seat_number': assignment.seat_number,
+                    'row': assignment.row,
+                    'column': assignment.column
+                }
+            
+            exam_data.append(exam_info)
+        
+        return success_response(exam_data)
+        
+    except Exception as e:
+        return error_response(f"Failed to fetch exams: {str(e)}", 500)
+
+# Attendance API
+@api_bp.route('/attendance', methods=['GET'])
+@api_auth_required
+def get_attendance():
+    try:
+        if current_user.role == 'student':
+            student = Student.query.filter_by(user_id=current_user.id).first()
+            if not student:
+                return error_response("Student profile not found", 404)
+            
+            records = Attendance.query.filter_by(student_id=student.id).all()
+            
+        elif current_user.role == 'parent':
+            parent = Parent.query.filter_by(user_id=current_user.id).first()
+            if not parent:
+                return error_response("Parent profile not found", 404)
+            
+            children = Student.query.filter_by(parent_id=parent.id).all()
+            records = []
+            
+            for child in children:
+                child_records = Attendance.query.filter_by(student_id=child.id).all()
+                records.extend(child_records)
+        
+        else:
+            return error_response("Invalid role", 403)
+        
+        # Format attendance data
+        attendance_data = []
+        for record in records:
+            attendance_data.append({
+                'id': record.id,
+                'date': record.date.isoformat(),
+                'status': record.status,
+                'remarks': record.remarks,
+                'subject': {
+                    'id': record.subject.id,
+                    'name': record.subject.name,
+                    'code': record.subject.code
+                },
+                'teacher': {
+                    'id': record.teacher.id,
+                    'name': record.teacher.user.get_full_name()
+                }
+            })
+        
+        return success_response(attendance_data)
+        
+    except Exception as e:
+        return error_response(f"Failed to fetch attendance: {str(e)}", 500)
+
+# Google Calendar Integration API
+@api_bp.route('/calendar/export', methods=['GET'])
+@api_auth_required
+def export_calendar():
+    try:
+        from utils.export_helpers import ExportHelper
+        
+        export_helper = ExportHelper()
+        calendar_data = export_helper.generate_ical_export(current_user)
+        
+        return success_response(calendar_data)
+        
+    except Exception as e:
+        return error_response(f"Failed to export calendar: {str(e)}", 500)
+
+# Notifications API
+@api_bp.route('/notifications', methods=['GET'])
+@api_auth_required
+def get_notifications():
+    try:
+        from models import Notification
+        
+        notifications = Notification.query.filter(
+            (Notification.recipient_type == current_user.role) |
+            (Notification.recipient_type == 'all') |
+            (Notification.recipient_id == current_user.id)
+        ).order_by(Notification.created_at.desc()).limit(50).all()
+        
+        notification_data = []
+        for notification in notifications:
+            notification_data.append({
+                'id': notification.id,
+                'title': notification.title,
+                'message': notification.message,
+                'type': notification.notification_type,
+                'is_read': notification.is_read,
+                'created_at': notification.created_at.isoformat(),
+                'expires_at': notification.expires_at.isoformat() if notification.expires_at else None
+            })
+        
+        return success_response(notification_data)
+        
+    except Exception as e:
+        return error_response(f"Failed to fetch notifications: {str(e)}", 500)
+
+@api_bp.route('/notifications/<int:notification_id>/read', methods=['PUT'])
+@api_auth_required
+def mark_notification_read(notification_id):
+    try:
+        from models import Notification
+        
+        notification = Notification.query.get_or_404(notification_id)
+        notification.is_read = True
+        db.session.commit()
+        
+        return success_response(message="Notification marked as read")
+        
+    except Exception as e:
+        return error_response(f"Failed to mark notification as read: {str(e)}", 500)
+
+# Elective Selection API
+@api_bp.route('/electives', methods=['GET', 'POST'])
+@api_auth_required
+def electives():
+    if current_user.role != 'student':
+        return error_response("Access denied", 403)
+    
+    try:
+        student = Student.query.filter_by(user_id=current_user.id).first()
+        if not student:
+            return error_response("Student profile not found", 404)
+        
+        if request.method == 'GET':
+            # Get available electives
+            elective_subjects = Subject.query.filter_by(
+                grade_level=student.grade,
+                is_elective=True
+            ).all()
+            
+            # Get current selections
+            from models import ElectiveSelection
+            current_selections = ElectiveSelection.query.filter_by(student_id=student.id).all()
+            selected_ids = [s.subject_id for s in current_selections]
+            
+            electives_data = []
+            for subject in elective_subjects:
+                electives_data.append({
+                    'id': subject.id,
+                    'code': subject.code,
+                    'name': subject.name,
+                    'description': subject.description,
+                    'weekly_hours': subject.weekly_hours,
+                    'is_selected': subject.id in selected_ids
+                })
+            
+            return success_response(electives_data)
+        
+        elif request.method == 'POST':
+            data = request.get_json()
+            selected_subjects = data.get('selected_subjects', [])
+            academic_year = data.get('academic_year', '2024-25')
+            
+            # Clear existing selections
+            from models import ElectiveSelection
+            ElectiveSelection.query.filter_by(
+                student_id=student.id,
+                academic_year=academic_year
+            ).delete()
+            
+            # Add new selections
+            for subject_id in selected_subjects:
+                elective_selection = ElectiveSelection(
+                    student_id=student.id,
+                    subject_id=subject_id,
+                    academic_year=academic_year
+                )
+                db.session.add(elective_selection)
+            
+            db.session.commit()
+            return success_response(message="Elective selections updated successfully")
+            
+    except Exception as e:
+        return error_response(f"Failed to handle electives: {str(e)}", 500)
+
+# Health Check API
+@api_bp.route('/health', methods=['GET'])
+def health_check():
+    try:
+        # Basic health checks
+        db.session.execute('SELECT 1')
+        
+        return success_response({
+            'status': 'healthy',
+            'timestamp': datetime.utcnow().isoformat(),
+            'database': 'connected'
+        })
+        
+    except Exception as e:
+        return error_response(f"Health check failed: {str(e)}", 500)
+
+# API Documentation endpoint
+@api_bp.route('/docs', methods=['GET'])
+def api_docs():
+    docs = {
+        'version': '1.0',
+        'base_url': '/api',
+        'endpoints': {
+            'GET /profile': 'Get user profile',
+            'PUT /profile': 'Update user profile',
+            'GET /timetable': 'Get user timetable',
+            'GET /exams': 'Get exam schedule',
+            'GET /attendance': 'Get attendance records',
+            'GET /calendar/export': 'Export calendar data',
+            'GET /notifications': 'Get notifications',
+            'PUT /notifications/<id>/read': 'Mark notification as read',
+            'GET /electives': 'Get available electives (students only)',
+            'POST /electives': 'Update elective selections (students only)',
+            'GET /health': 'Health check'
+        },
+        'authentication': 'Login required for all endpoints except /health and /docs',
+        'response_format': {
+            'success': True,
+            'message': 'Success message',
+            'data': 'Response data (optional)'
+        }
+    }
+    
+    return jsonify(docs)

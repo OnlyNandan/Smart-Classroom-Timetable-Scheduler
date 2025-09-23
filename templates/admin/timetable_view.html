@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Timetable View - Edu-Sync AI{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Timetable View</h1>
+                    <p class="mt-2 text-gray-600 dark:text-gray-400">View and manage institutional timetables.</p>
+                </div>
+                <div class="flex space-x-4">
+                    <button onclick="exportTimetable('pdf')" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors">
+                        <i class="fas fa-file-pdf mr-2"></i>Export PDF
+                    </button>
+                    <button onclick="exportTimetable('excel')" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors">
+                        <i class="fas fa-file-excel mr-2"></i>Export Excel
+                    </button>
+                    <button onclick="exportTimetable('ical')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                        <i class="fas fa-calendar mr-2"></i>Export iCal
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Filters -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+            <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label for="version" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Version</label>
+                    <select id="version" name="version" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500">
+                        <option value="latest">Latest</option>
+                        {% for version in versions %}
+                        <option value="{{ version[0] }}" {% if version[0] == request.args.get('version') %}selected{% endif %}>{{ version[0] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="grade" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Grade</label>
+                    <select id="grade" name="grade" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">All Grades</option>
+                        {% for grade in grades %}
+                        <option value="{{ grade[0] }}" {% if grade[0] == request.args.get('grade') %}selected{% endif %}>{{ grade[0] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="section" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Section</label>
+                    <select id="section" name="section" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">All Sections</option>
+                        {% for section in sections %}
+                        <option value="{{ section[0] }}" {% if section[0] == request.args.get('section') %}selected{% endif %}>{{ section[0] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="w-full bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors">
+                        <i class="fas fa-filter mr-2"></i>Apply Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Timetable Display -->
+        {% if timetable_entries %}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Day</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Time</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Subject</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Teacher</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Room</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Grade/Section</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Version</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {% for entry in timetable_entries %}
+                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{{ entry.day_of_week }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ entry.time_slot }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                {% if entry.subject %}
+                                    <div class="flex items-center">
+                                        <span class="font-medium">{{ entry.subject.name }}</span>
+                                        <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">({{ entry.subject.code }})</span>
+                                    </div>
+                                {% else %}
+                                    <span class="text-gray-400">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                {% if entry.teacher %}
+                                    {{ entry.teacher.user.get_full_name() }}
+                                {% else %}
+                                    <span class="text-gray-400">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                {% if entry.room %}
+                                    <div class="flex items-center">
+                                        <span class="font-medium">{{ entry.room.room_number }}</span>
+                                        <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">{{ entry.room.name }}</span>
+                                    </div>
+                                {% else %}
+                                    <span class="text-gray-400">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{{ entry.grade }}/{{ entry.section }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                    {% if entry.is_manual_override %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300{% else %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300{% endif %}">
+                                    {% if entry.is_manual_override %}Manual{% else %}AI{% endif %}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-12 text-center">
+            <i class="fas fa-calendar-times text-gray-400 text-6xl mb-4"></i>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No Timetable Found</h3>
+            <p class="text-gray-600 dark:text-gray-400 mb-6">No timetable entries match your current filters.</p>
+            <a href="{{ url_for('admin.dashboard') }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 transition-colors">
+                <i class="fas fa-plus mr-2"></i>Generate Timetable
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function exportTimetable(format) {
+    const url = new URL('{{ url_for("admin.export_timetable") }}', window.location.origin);
+    url.searchParams.set('format', format);
+    
+    const version = document.getElementById('version').value;
+    const grade = document.getElementById('grade').value;
+    const section = document.getElementById('section').value;
+    
+    if (version) url.searchParams.set('version', version);
+    if (grade) url.searchParams.set('grade', grade);
+    if (section) url.searchParams.set('section', section);
+    
+    window.open(url.toString(), '_blank');
+}
+</script>
+{% endblock %}

@@ -1,85 +1,128 @@
+"""
+Edu-Sync AI - Smart Timetable & Exam Scheduler
+Main Flask application entry point
+"""
+
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 import os
 import json
-from datetime import datetime, timezone
-from flask import Flask, request, redirect, url_for, g
+from datetime import datetime, timedelta
+import pandas as pd
+from functools import wraps
+import google.generativeai as genai
+from dotenv import load_dotenv
 
-from config import Config
-from extensions import db
-from models import AppConfig, User, Subject, Course, TimetableEntry, SystemMetric
+# Load environment variables
+load_dotenv()
 
-def create_app(config_class=Config):
-    # --- App Initialization ---
-    app = Flask(__name__)
-    app.config.from_object(config_class)
+app = Flask(__name__)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///edu_sync.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
-    # --- Initialize Extensions ---
-    db.init_app(app)
+# Initialize extensions
+db = SQLAlchemy(app)
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'auth.login'
+login_manager.login_message = 'Please log in to access this page.'
 
-    # --- Import and Register Blueprints ---
-    from routes.main import main_bp
-    from routes.structure import structure_bp
-    from routes.subjects import subjects_bp
-    from routes.staff import staff_bp
-    from routes.classrooms import classrooms_bp
-    from routes.sections import sections_bp
-    from routes.timetable import timetable_bp
-    from routes.analytics import analytics_bp
-    from routes.api import api_bp
-    from routes.exams import exams_bp
+# Configure Google Gemini AI
+genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+model = genai.GenerativeModel('gemini-pro')
 
-    app.register_blueprint(main_bp)
-    app.register_blueprint(structure_bp)
-    app.register_blueprint(subjects_bp)
-    app.register_blueprint(staff_bp)
-    app.register_blueprint(classrooms_bp)
-    app.register_blueprint(sections_bp)
-    app.register_blueprint(timetable_bp)
-    app.register_blueprint(analytics_bp)
-    app.register_blueprint(api_bp)
-    app.register_blueprint(exams_bp)
+# Create upload directory
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-    # --- Application Hooks & Context Processors ---
-    @app.before_request
-    def check_setup():
-        # Allow static files and the setup page to be accessed without checks
-        if request.endpoint and ('static' in request.endpoint or 'main.setup' in request.endpoint):
-            return
-        try:
-            # If setup is not complete, redirect to the setup page
-            if not AppConfig.query.filter_by(key='setup_complete', value='true').first():
-                return redirect(url_for('main.setup'))
-            # Load the application mode (school/college) into the global context `g`
-            g.app_mode = AppConfig.query.filter_by(key='app_mode').first().value
-        except Exception as e:
-            # If the database/tables don't exist, an error will occur. Redirect to setup.
-            print(f"Redirecting to setup due to error: {e}")
-            return redirect(url_for('main.setup'))
+# Import models and routes
+from models import db, User, Teacher, Student, Parent, Subject, Room, TimetableEntry, ExamSchedule, ExamAssignment, Attendance, Notification
+from routes.auth import auth_bp
+from routes.admin import admin_bp
+from routes.teacher import teacher_bp
+from routes.student import student_bp
+from routes.parent import parent_bp
+from routes.api import api_bp
 
-    @app.context_processor
-    def inject_global_vars():
-        # This makes 'institute_name' available in all templates
-        try:
-            config = AppConfig.query.filter_by(key='institute_name').first()
-            return {'institute_name': config.value if config else 'Scheduler AI'}
-        except Exception:
-            return {'institute_name': 'Scheduler AI'}
+# Register blueprints
+app.register_blueprint(auth_bp, url_prefix='/auth')
+app.register_blueprint(admin_bp, url_prefix='/admin')
+app.register_blueprint(teacher_bp, url_prefix='/teacher')
+app.register_blueprint(student_bp, url_prefix='/student')
+app.register_blueprint(parent_bp, url_prefix='/parent')
+app.register_blueprint(api_bp, url_prefix='/api')
 
-    return app
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+# Role-based access control decorator
+def role_required(roles):
+    def decorator(f):
+        @wraps(f)
+        @login_required
+        def decorated_function(*args, **kwargs):
+            if current_user.role not in roles:
+                flash('Access denied. Insufficient permissions.', 'error')
+                return redirect(url_for('auth.login'))
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+@app.route('/')
+def index():
+    if current_user.is_authenticated:
+        if current_user.role == 'admin':
+            return redirect(url_for('admin.dashboard'))
+        elif current_user.role == 'teacher':
+            return redirect(url_for('teacher.dashboard'))
+        elif current_user.role == 'student':
+            return redirect(url_for('student.dashboard'))
+        elif current_user.role == 'parent':
+            return redirect(url_for('parent.dashboard'))
+    return render_template('index.html')
+
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
+@app.route('/contact')
+def contact():
+    return render_template('contact.html')
+
+# Error handlers
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('errors/404.html'), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    db.session.rollback()
+    return render_template('errors/500.html'), 500
+
+# Initialize database
+def create_tables():
+    db.create_all()
+    
+    # Create default admin user if none exists
+    if not User.query.filter_by(role='admin').first():
+        admin = User(
+            username='admin',
+            email='admin@edusync.com',
+            password_hash=generate_password_hash('admin123'),
+            role='admin',
+            first_name='System',
+            last_name='Administrator'
+        )
+        db.session.add(admin)
+        db.session.commit()
 
 if __name__ == '__main__':
-    app = create_app()
     with app.app_context():
-        # Create database tables if they don't exist
-        db.create_all()
-        
-        # Log system metrics once per day
-        today = datetime.now(timezone.utc).date()
-        if not SystemMetric.query.filter_by(date=today).first():
-             db.session.add(SystemMetric(key='total_students', value=User.query.filter_by(role='student').count()))
-             db.session.add(SystemMetric(key='total_teachers', value=User.query.filter_by(role='teacher').count()))
-             total_subjects = Subject.query.count() + Course.query.count()
-             db.session.add(SystemMetric(key='total_subjects', value=total_subjects))
-             db.session.add(SystemMetric(key='classes_scheduled', value=TimetableEntry.query.count()))
-             db.session.commit()
-             
-    app.run(debug=True)
+        create_tables()
+    app.run(debug=True, host='0.0.0.0', port=5000)

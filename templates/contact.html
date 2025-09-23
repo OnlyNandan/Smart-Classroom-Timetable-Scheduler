@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Contact - Edu-Sync AI{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <!-- Header -->
+        <div class="text-center mb-16">
+            <h1 class="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
+                Contact Us
+            </h1>
+            <p class="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
+                Get in touch with our team. We're here to help you transform your educational institution.
+            </p>
+        </div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <!-- Contact Information -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Get in Touch</h2>
+                <div class="space-y-6">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-lg flex items-center justify-center mr-4">
+                            <i class="fas fa-envelope text-primary-600 dark:text-primary-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Email</h3>
+                            <p class="text-gray-600 dark:text-gray-400">support@edusync.com</p>
+                            <p class="text-gray-600 dark:text-gray-400">info@edusync.com</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mr-4">
+                            <i class="fas fa-phone text-green-600 dark:text-green-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Phone</h3>
+                            <p class="text-gray-600 dark:text-gray-400">+91 98765 43210</p>
+                            <p class="text-gray-600 dark:text-gray-400">+91 87654 32109</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center mr-4">
+                            <i class="fas fa-map-marker-alt text-yellow-600 dark:text-yellow-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Address</h3>
+                            <p class="text-gray-600 dark:text-gray-400">
+                                Edu-Sync AI Technologies<br>
+                                123 Innovation Drive<br>
+                                Bangalore, Karnataka 560001<br>
+                                India
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mr-4">
+                            <i class="fas fa-clock text-purple-600 dark:text-purple-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Business Hours</h3>
+                            <p class="text-gray-600 dark:text-gray-400">Monday - Friday: 9:00 AM - 6:00 PM</p>
+                            <p class="text-gray-600 dark:text-gray-400">Saturday: 10:00 AM - 4:00 PM</p>
+                            <p class="text-gray-600 dark:text-gray-400">Sunday: Closed</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Social Media -->
+                <div class="mt-8">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Follow Us</h3>
+                    <div class="flex space-x-4">
+                        <a href="#" class="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors">
+                            <i class="fab fa-twitter text-blue-600 dark:text-blue-400"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors">
+                            <i class="fab fa-linkedin text-blue-600 dark:text-blue-400"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-gray-100 dark:bg-gray-900 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
+                            <i class="fab fa-github text-gray-600 dark:text-gray-400"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center hover:bg-red-200 dark:hover:bg-red-800 transition-colors">
+                            <i class="fab fa-youtube text-red-600 dark:text-red-400"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Contact Form -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Send us a Message</h2>
+                <form class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="first_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                First Name
+                            </label>
+                            <input type="text" id="first_name" name="first_name" required
+                                   class="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                                   placeholder="Enter your first name">
+                        </div>
+                        <div>
+                            <label for="last_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Last Name
+                            </label>
+                            <input type="text" id="last_name" name="last_name" required
+                                   class="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                                   placeholder="Enter your last name">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Email Address
+                        </label>
+                        <input type="email" id="email" name="email" required
+                               class="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                               placeholder="Enter your email address">
+                    </div>
+                    
+                    <div>
+                        <label for="phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Phone Number
+                        </label>
+                        <input type="tel" id="phone" name="phone"
+                               class="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                               placeholder="Enter your phone number">
+                    </div>
+                    
+                    <div>
+                        <label for="institution" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Institution Name
+                        </label>
+                        <input type="text" id="institution" name="institution"
+                               class="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                               placeholder="Enter your institution name">
+                    </div>
+                    
+                    <div>
+                        <label for="subject" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Subject
+                        </label>
+                        <select id="subject" name="subject" required
+                                class="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 transition-colors">
+                            <option value="">Select a subject</option>
+                            <option value="general">General Inquiry</option>
+                            <option value="demo">Request Demo</option>
+                            <option value="pricing">Pricing Information</option>
+                            <option value="support">Technical Support</option>
+                            <option value="partnership">Partnership</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="message" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Message
+                        </label>
+                        <textarea id="message" name="message" rows="4" required
+                                  class="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                                  placeholder="Tell us how we can help you"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                        <i class="fas fa-paper-plane mr-2"></i>Send Message
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- FAQ Section -->
+        <div class="mt-16">
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white text-center mb-12">Frequently Asked Questions</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">How quickly can you generate a timetable?</h3>
+                    <p class="text-gray-600 dark:text-gray-400">Our AI can generate a complete timetable for 5,000+ students in under 2 minutes, including all constraints and optimizations.</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Do you support mobile devices?</h3>
+                    <p class="text-gray-600 dark:text-gray-400">Yes! Our mobile-first design works seamlessly on all devices, and we provide a RESTful API for native mobile app development.</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Can we customize the system for our needs?</h3>
+                    <p class="text-gray-600 dark:text-gray-400">Absolutely! We offer extensive customization options and can tailor the system to meet your specific institutional requirements.</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">What kind of support do you provide?</h3>
+                    <p class="text-gray-600 dark:text-gray-400">We provide comprehensive support including documentation, training, and 24/7 technical assistance for enterprise customers.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+You are a master scheduler for Indian schools. Based on the following JSON data of teachers, subjects, classrooms, and student sections, generate an optimal, conflict-free weekly timetable.
+
+Input Data (JSON):
+{json_data}
+
+Hard Constraints (Must be met):
+
+1. No Conflicts: A teacher, section, or room cannot be in two places at once.
+2. Teacher Workload: A teacher's total weekly hours must not exceed their specified max_hours_week. Distribute classes evenly throughout the week.
+3. No Gaps: Student timetables must be contiguous. No free periods are allowed between two classes on the same day.
+4. Grade Timings: Classes for lower grades (UKG-5th) must be scheduled to finish by 1:30 PM. Higher grades can have classes throughout the day.
+5. Lab Exclusivity: Lab sessions (reqd_lab: true) are only for higher grades (9th and above) and must be scheduled in a 'Lab' type room.
+6. Full Coverage: All required weekly hours for every subject in every section must be scheduled.
+
+Time Slots Available:
+- 08:00-09:00
+- 09:00-10:00
+- 10:00-11:00
+- 11:00-12:00
+- 12:00-13:00
+- 13:00-14:00
+- 14:00-15:00
+- 15:00-16:00
+
+Days: Monday, Tuesday, Wednesday, Thursday, Friday
+
+Output Format (JSON):
+Return a single JSON array of timetable entry objects.
+[ 
+  { 
+    "day": "Monday", 
+    "time_slot": "09:00-10:00", 
+    "course_id": "PHY12", 
+    "teacher_id": "T004", 
+    "room_id": "R101", 
+    "section_id": "SEC12A" 
+  }, 
+  ... 
+]

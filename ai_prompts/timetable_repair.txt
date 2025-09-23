@@ -1,0 +1,18 @@
+You are a conflict resolution expert. The user has manually edited a timetable, potentially creating conflicts. The following JSON contains the entire modified timetable. Analyze it, identify all conflicts, and return a repaired, conflict-free version. Also, provide a human-readable explanation of the changes you made.
+
+Input Data (JSON):
+{json_data}
+
+Task:
+1. Identify all conflicts (teacher, room, section clashes).
+2. Resolve the conflicts by rescheduling the minimum number of classes necessary.
+3. Prioritize keeping the user's manual changes if they are conflict-free.
+
+Output Format (JSON):
+{
+  "repaired_timetable": [...],
+  "explanation_of_changes": [
+    "Moved Physics class for 12A from Monday at 10:00 to Wednesday at 14:00 to resolve a clash for Dr. Sharma.",
+    ...
+  ]
+}

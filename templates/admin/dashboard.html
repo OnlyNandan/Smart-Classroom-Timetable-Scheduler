@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Edu-Sync AI{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">Welcome back, {{ current_user.get_full_name() }}! Manage your institution's scheduling system.</p>
+        </div>
+        
+        <!-- Statistics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 card-hover">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-chalkboard-teacher text-blue-600 dark:text-blue-400"></i>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Teachers</p>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ stats.total_teachers }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 card-hover">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-user-graduate text-green-600 dark:text-green-400"></i>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Students</p>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ stats.total_students }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 card-hover">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-book text-purple-600 dark:text-purple-400"></i>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Subjects</p>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ stats.total_subjects }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 card-hover">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-door-open text-yellow-600 dark:text-yellow-400"></i>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Rooms</p>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ stats.total_rooms }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 card-hover">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-indigo-100 dark:bg-indigo-900 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-calendar-alt text-indigo-600 dark:text-indigo-400"></i>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Active Timetables</p>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ stats.active_timetables }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 card-hover">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-clipboard-check text-red-600 dark:text-red-400"></i>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Upcoming Exams</p>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ stats.upcoming_exams }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- AI Timetable Generation -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                <div class="flex items-center mb-4">
+                    <div class="w-10 h-10 bg-gradient-to-r from-primary-500 to-primary-600 rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-robot text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">AI Timetable Generation</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Generate optimal timetables using AI</p>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <button onclick="generateTimetable()" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                        <i class="fas fa-magic mr-2"></i>Generate Timetable
+                    </button>
+                    <button onclick="repairTimetable()" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                        <i class="fas fa-tools mr-2"></i>Repair Timetable
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Bulk Import -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                <div class="flex items-center mb-4">
+                    <div class="w-10 h-10 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-upload text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Bulk Import</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Import users and data via CSV</p>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <a href="{{ url_for('admin.bulk_import') }}" class="block w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-center">
+                        <i class="fas fa-file-csv mr-2"></i>Import Data
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Management Sections -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <a href="{{ url_for('admin.users') }}" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 card-hover block">
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-users text-blue-600 dark:text-blue-400 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Users</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Manage all users</p>
+                </div>
+            </a>
+            
+            <a href="{{ url_for('admin.teachers') }}" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 card-hover block">
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-chalkboard-teacher text-green-600 dark:text-green-400 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Teachers</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Manage faculty</p>
+                </div>
+            </a>
+            
+            <a href="{{ url_for('admin.students') }}" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 card-hover block">
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-user-graduate text-purple-600 dark:text-purple-400 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Students</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Manage students</p>
+                </div>
+            </a>
+            
+            <a href="{{ url_for('admin.subjects') }}" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 card-hover block">
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-book text-yellow-600 dark:text-yellow-400 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Subjects</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Manage subjects</p>
+                </div>
+            </a>
+            
+            <a href="{{ url_for('admin.rooms') }}" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 card-hover block">
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900 rounded-lg flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-door-open text-indigo-600 dark:text-indigo-400 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Rooms</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Manage rooms</p>
+                </div>
+            </a>
+            
+            <a href="{{ url_for('admin.timetable_view') }}" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 card-hover block">
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-calendar-alt text-red-600 dark:text-red-400 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Timetable</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">View timetables</p>
+                </div>
+            </a>
+            
+            <a href="{{ url_for('admin.exam_schedule') }}" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 card-hover block">
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-pink-100 dark:bg-pink-900 rounded-lg flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-clipboard-check text-pink-600 dark:text-pink-400 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Exams</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Manage exams</p>
+                </div>
+            </a>
+            
+            <a href="{{ url_for('admin.notifications') }}" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 card-hover block">
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-gray-100 dark:bg-gray-900 rounded-lg flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-bell text-gray-600 dark:text-gray-400 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Notifications</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Send notifications</p>
+                </div>
+            </a>
+        </div>
+        
+        <!-- Recent Notifications -->
+        {% if notifications %}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Notifications</h3>
+            <div class="space-y-3">
+                {% for notification in notifications %}
+                <div class="flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center
+                            {% if notification.notification_type == 'error' %}bg-red-100 dark:bg-red-900
+                            {% elif notification.notification_type == 'warning' %}bg-yellow-100 dark:bg-yellow-900
+                            {% elif notification.notification_type == 'success' %}bg-green-100 dark:bg-green-900
+                            {% else %}bg-blue-100 dark:bg-blue-900{% endif %}">
+                            <i class="fas 
+                                {% if notification.notification_type == 'error' %}fa-exclamation-circle text-red-600 dark:text-red-400
+                                {% elif notification.notification_type == 'warning' %}fa-exclamation-triangle text-yellow-600 dark:text-yellow-400
+                                {% elif notification.notification_type == 'success' %}fa-check-circle text-green-600 dark:text-green-400
+                                {% else %}fa-info-circle text-blue-600 dark:text-blue-400{% endif %} text-sm"></i>
+                        </div>
+                    </div>
+                    <div class="ml-3 flex-1">
+                        <p class="text-sm font-medium text-gray-900 dark:text-white">{{ notification.title }}</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">{{ notification.message }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-500">{{ notification.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function generateTimetable() {
+    if (confirm('Are you sure you want to generate a new timetable? This will create a new version.')) {
+        fetch('{{ url_for("admin.generate_timetable") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Timetable generated successfully!');
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while generating the timetable.');
+        });
+    }
+}
+
+function repairTimetable() {
+    if (confirm('Are you sure you want to repair the current timetable? This will fix any conflicts.')) {
+        fetch('{{ url_for("admin.repair_timetable") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Timetable repaired successfully!');
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while repairing the timetable.');
+        });
+    }
+}
+</script>
+{% endblock %}

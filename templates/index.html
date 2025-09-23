@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}Edu-Sync AI - Smart Timetable & Exam Scheduler{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="relative overflow-hidden">
+    <div class="gradient-bg">
+        <div class="absolute inset-0 bg-black opacity-20"></div>
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+            <div class="text-center">
+                <h1 class="text-4xl md:text-6xl font-bold text-white mb-6 fade-in">
+                    Edu-Sync AI
+                </h1>
+                <p class="text-xl md:text-2xl text-white/90 mb-8 max-w-3xl mx-auto fade-in">
+                    The Ultimate Smart Timetable & Exam Scheduler for Indian Educational Institutions
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center fade-in">
+                    {% if not current_user.is_authenticated %}
+                        <a href="{{ url_for('auth.login') }}" class="bg-white text-primary-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors card-hover">
+                            Get Started
+                        </a>
+                        <a href="{{ url_for('auth.register') }}" class="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-primary-600 transition-colors card-hover">
+                            Register Now
+                        </a>
+                    {% else %}
+                        {% if current_user.role == 'admin' %}
+                            <a href="{{ url_for('admin.dashboard') }}" class="bg-white text-primary-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors card-hover">
+                                Admin Dashboard
+                            </a>
+                        {% elif current_user.role == 'teacher' %}
+                            <a href="{{ url_for('teacher.dashboard') }}" class="bg-white text-primary-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors card-hover">
+                                Teacher Dashboard
+                            </a>
+                        {% elif current_user.role == 'student' %}
+                            <a href="{{ url_for('student.dashboard') }}" class="bg-white text-primary-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors card-hover">
+                                Student Dashboard
+                            </a>
+                        {% elif current_user.role == 'parent' %}
+                            <a href="{{ url_for('parent.dashboard') }}" class="bg-white text-primary-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors card-hover">
+                                Parent Dashboard
+                            </a>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Features Section -->
+<div class="py-20 bg-white dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+            <h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                Revolutionary Features
+            </h2>
+            <p class="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
+                Powered by advanced AI and designed for the modern educational ecosystem
+            </p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- AI Timetable Generation -->
+            <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg card-hover">
+                <div class="w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-lg flex items-center justify-center mb-6">
+                    <i class="fas fa-robot text-primary-600 dark:text-primary-400 text-xl"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                    AI-Powered Scheduling
+                </h3>
+                <p class="text-gray-600 dark:text-gray-400">
+                    Advanced AI algorithms automatically generate conflict-free timetables, optimizing teacher workloads and resource utilization.
+                </p>
+            </div>
+            
+            <!-- Real-time Collaboration -->
+            <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg card-hover">
+                <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mb-6">
+                    <i class="fas fa-users text-green-600 dark:text-green-400 text-xl"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                    Real-time Collaboration
+                </h3>
+                <p class="text-gray-600 dark:text-gray-400">
+                    Multiple stakeholders can collaborate in real-time with live editing, conflict detection, and automatic synchronization.
+                </p>
+            </div>
+            
+            <!-- Smart Exam Scheduling -->
+            <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg card-hover">
+                <div class="w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center mb-6">
+                    <i class="fas fa-calendar-alt text-yellow-600 dark:text-yellow-400 text-xl"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                    Smart Exam Scheduling
+                </h3>
+                <p class="text-gray-600 dark:text-gray-400">
+                    Intelligent exam scheduling with automated seating plans, conflict avoidance, and optimal resource allocation.
+                </p>
+            </div>
+            
+            <!-- Multi-Role Access -->
+            <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg card-hover">
+                <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mb-6">
+                    <i class="fas fa-shield-alt text-purple-600 dark:text-purple-400 text-xl"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                    Multi-Role Access
+                </h3>
+                <p class="text-gray-600 dark:text-gray-400">
+                    Comprehensive portals for administrators, teachers, students, and parents with role-based access control.
+                </p>
+            </div>
+            
+            <!-- Export & Integration -->
+            <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg card-hover">
+                <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mb-6">
+                    <i class="fas fa-download text-blue-600 dark:text-blue-400 text-xl"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                    Export & Integration
+                </h3>
+                <p class="text-gray-600 dark:text-gray-400">
+                    Export timetables in multiple formats (PDF, Excel, iCal) with seamless Google Calendar integration.
+                </p>
+            </div>
+            
+            <!-- Mobile-First Design -->
+            <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg card-hover">
+                <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900 rounded-lg flex items-center justify-center mb-6">
+                    <i class="fas fa-mobile-alt text-indigo-600 dark:text-indigo-400 text-xl"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                    Mobile-First Design
+                </h3>
+                <p class="text-gray-600 dark:text-gray-400">
+                    Fully responsive design with RESTful API support for future native mobile applications.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Section -->
+<div class="py-20 bg-gray-50 dark:bg-gray-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+            <h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                Trusted by Educational Institutions
+            </h2>
+            <p class="text-xl text-gray-600 dark:text-gray-400">
+                Transforming scheduling across India
+            </p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div class="text-center">
+                <div class="text-4xl font-bold text-primary-600 dark:text-primary-400 mb-2">5000+</div>
+                <div class="text-gray-600 dark:text-gray-400">Students Supported</div>
+            </div>
+            <div class="text-center">
+                <div class="text-4xl font-bold text-primary-600 dark:text-primary-400 mb-2">200+</div>
+                <div class="text-gray-600 dark:text-gray-400">Teachers</div>
+            </div>
+            <div class="text-center">
+                <div class="text-4xl font-bold text-primary-600 dark:text-primary-400 mb-2">50+</div>
+                <div class="text-gray-600 dark:text-gray-400">Subjects</div>
+            </div>
+            <div class="text-center">
+                <div class="text-4xl font-bold text-primary-600 dark:text-primary-400 mb-2">2min</div>
+                <div class="text-gray-600 dark:text-gray-400">Generation Time</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CTA Section -->
+{% if not current_user.is_authenticated %}
+<div class="py-20 bg-primary-600 dark:bg-primary-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">
+            Ready to Transform Your Institution?
+        </h2>
+        <p class="text-xl text-primary-100 mb-8 max-w-3xl mx-auto">
+            Join thousands of educational institutions already using Edu-Sync AI to streamline their scheduling processes.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="{{ url_for('auth.register') }}" class="bg-white text-primary-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors card-hover">
+                Start Free Trial
+            </a>
+            <a href="{{ url_for('about') }}" class="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-primary-600 transition-colors card-hover">
+                Learn More
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

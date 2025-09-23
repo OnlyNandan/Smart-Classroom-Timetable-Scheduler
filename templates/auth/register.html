@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Edu-Sync AI{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8">
+        <div class="text-center">
+            <div class="mx-auto h-12 w-12 bg-gradient-to-r from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
+                <i class="fas fa-graduation-cap text-white text-xl"></i>
+            </div>
+            <h2 class="mt-6 text-3xl font-bold text-gray-900 dark:text-white">
+                Create your account
+            </h2>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                Join Edu-Sync AI today
+            </p>
+        </div>
+        
+        <form class="mt-8 space-y-6" method="POST">
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="first_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            First Name
+                        </label>
+                        <input id="first_name" name="first_name" type="text" required
+                               class="mt-1 appearance-none relative block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
+                               placeholder="First name">
+                    </div>
+                    <div>
+                        <label for="last_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Last Name
+                        </label>
+                        <input id="last_name" name="last_name" type="text" required
+                               class="mt-1 appearance-none relative block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
+                               placeholder="Last name">
+                    </div>
+                </div>
+                
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Username
+                    </label>
+                    <input id="username" name="username" type="text" required
+                           class="mt-1 appearance-none relative block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
+                           placeholder="Choose a username">
+                </div>
+                
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Email Address
+                    </label>
+                    <input id="email" name="email" type="email" required
+                           class="mt-1 appearance-none relative block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
+                           placeholder="Enter your email">
+                </div>
+                
+                <div>
+                    <label for="phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Phone Number
+                    </label>
+                    <input id="phone" name="phone" type="tel"
+                           class="mt-1 appearance-none relative block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
+                           placeholder="Phone number (optional)">
+                </div>
+                
+                <div>
+                    <label for="role" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Role
+                    </label>
+                    <select id="role" name="role" required
+                            class="mt-1 block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors">
+                        <option value="">Select your role</option>
+                        <option value="teacher">Teacher</option>
+                        <option value="student">Student</option>
+                        <option value="parent">Parent</option>
+                    </select>
+                </div>
+                
+                <!-- Dynamic fields based on role -->
+                <div id="role-specific-fields" class="hidden space-y-4">
+                    <!-- Teacher fields -->
+                    <div id="teacher-fields" class="hidden">
+                        <div>
+                            <label for="specialization" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Specialization
+                            </label>
+                            <input id="specialization" name="specialization" type="text"
+                                   class="mt-1 appearance-none relative block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
+                                   placeholder="e.g., Mathematics, Science">
+                        </div>
+                        <div>
+                            <label for="qualifications" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Qualifications
+                            </label>
+                            <textarea id="qualifications" name="qualifications" rows="3"
+                                      class="mt-1 appearance-none relative block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
+                                      placeholder="List your qualifications"></textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- Student fields -->
+                    <div id="student-fields" class="hidden">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="grade" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Grade
+                                </label>
+                                <select id="grade" name="grade"
+                                        class="mt-1 block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors">
+                                    <option value="">Select Grade</option>
+                                    <option value="UKG">UKG</option>
+                                    <option value="1">1st</option>
+                                    <option value="2">2nd</option>
+                                    <option value="3">3rd</option>
+                                    <option value="4">4th</option>
+                                    <option value="5">5th</option>
+                                    <option value="6">6th</option>
+                                    <option value="7">7th</option>
+                                    <option value="8">8th</option>
+                                    <option value="9">9th</option>
+                                    <option value="10">10th</option>
+                                    <option value="11">11th</option>
+                                    <option value="12">12th</option>
+                                    <option value="College">College</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="section" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Section
+                                </label>
+                                <select id="section" name="section"
+                                        class="mt-1 block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors">
+                                    <option value="">Select Section</option>
+                                    <option value="A">A</option>
+                                    <option value="B">B</option>
+                                    <option value="C">C</option>
+                                    <option value="D">D</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Parent fields -->
+                    <div id="parent-fields" class="hidden">
+                        <div>
+                            <label for="occupation" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Occupation
+                            </label>
+                            <input id="occupation" name="occupation" type="text"
+                                   class="mt-1 appearance-none relative block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
+                                   placeholder="Your occupation">
+                        </div>
+                        <div>
+                            <label for="address" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Address
+                            </label>
+                            <textarea id="address" name="address" rows="3"
+                                      class="mt-1 appearance-none relative block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
+                                      placeholder="Your address"></textarea>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Password
+                    </label>
+                    <input id="password" name="password" type="password" required
+                           class="mt-1 appearance-none relative block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
+                           placeholder="Create a password">
+                </div>
+                
+                <div>
+                    <label for="confirm_password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Confirm Password
+                    </label>
+                    <input id="confirm_password" name="confirm_password" type="password" required
+                           class="mt-1 appearance-none relative block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors"
+                           placeholder="Confirm your password">
+                </div>
+            </div>
+            
+            <div>
+                <button type="submit"
+                        class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors">
+                    <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                        <i class="fas fa-user-plus text-primary-500 group-hover:text-primary-400"></i>
+                    </span>
+                    Create Account
+                </button>
+            </div>
+            
+            <div class="text-center">
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                    Already have an account?
+                    <a href="{{ url_for('auth.login') }}" class="font-medium text-primary-600 dark:text-primary-400 hover:text-primary-500 dark:hover:text-primary-300 transition-colors">
+                        Sign in here
+                    </a>
+                </p>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.getElementById('role').addEventListener('change', function() {
+    const role = this.value;
+    const roleSpecificFields = document.getElementById('role-specific-fields');
+    const teacherFields = document.getElementById('teacher-fields');
+    const studentFields = document.getElementById('student-fields');
+    const parentFields = document.getElementById('parent-fields');
+    
+    // Hide all role-specific fields
+    teacherFields.classList.add('hidden');
+    studentFields.classList.add('hidden');
+    parentFields.classList.add('hidden');
+    roleSpecificFields.classList.add('hidden');
+    
+    // Show relevant fields based on role
+    if (role === 'teacher') {
+        teacherFields.classList.remove('hidden');
+        roleSpecificFields.classList.remove('hidden');
+    } else if (role === 'student') {
+        studentFields.classList.remove('hidden');
+        roleSpecificFields.classList.remove('hidden');
+    } else if (role === 'parent') {
+        parentFields.classList.remove('hidden');
+        roleSpecificFields.classList.remove('hidden');
+    }
+});
+</script>
+{% endblock %}

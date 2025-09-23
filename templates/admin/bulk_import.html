@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Bulk Import - Edu-Sync AI{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Bulk Import</h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">Import users and data in bulk using CSV files.</p>
+        </div>
+        
+        <!-- Import Form -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+            <form method="POST" enctype="multipart/form-data" class="space-y-6">
+                <div>
+                    <label for="file_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Import Type
+                    </label>
+                    <select id="file_type" name="file_type" required
+                            class="block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500">
+                        <option value="">Select import type</option>
+                        <option value="students">Students</option>
+                        <option value="teachers">Teachers</option>
+                        <option value="subjects">Subjects</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="file" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        CSV File
+                    </label>
+                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg hover:border-primary-500 dark:hover:border-primary-400 transition-colors">
+                        <div class="space-y-1 text-center">
+                            <i class="fas fa-cloud-upload-alt text-gray-400 text-3xl"></i>
+                            <div class="flex text-sm text-gray-600 dark:text-gray-400">
+                                <label for="file" class="relative cursor-pointer bg-white dark:bg-gray-700 rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500">
+                                    <span>Upload a file</span>
+                                    <input id="file" name="file" type="file" class="sr-only" accept=".csv" required>
+                                </label>
+                                <p class="pl-1">or drag and drop</p>
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">CSV files up to 10MB</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                    <i class="fas fa-upload mr-2"></i>Import Data
+                </button>
+            </form>
+        </div>
+        
+        <!-- Sample CSV Format -->
+        <div class="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Sample CSV Format</h3>
+            
+            <!-- Students Format -->
+            <div class="mb-6">
+                <h4 class="text-md font-medium text-gray-700 dark:text-gray-300 mb-2">Students CSV Format:</h4>
+                <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 overflow-x-auto">
+                    <pre class="text-sm text-gray-800 dark:text-gray-200">username,email,first_name,last_name,role,phone,student_id,grade,section
+student1,student1@school.com,Ravi,Kumar,student,+919876543210,S001,10,A
+student2,student2@school.com,Priya,Sharma,student,+919876543211,S002,10,A</pre>
+                </div>
+            </div>
+            
+            <!-- Teachers Format -->
+            <div class="mb-6">
+                <h4 class="text-md font-medium text-gray-700 dark:text-gray-300 mb-2">Teachers CSV Format:</h4>
+                <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 overflow-x-auto">
+                    <pre class="text-sm text-gray-800 dark:text-gray-200">username,email,first_name,last_name,role,phone,employee_id,specialization,qualifications
+teacher1,teacher1@school.com,Dr. Sharma,Mathematics,teacher,+919876543220,T001,Mathematics,M.Sc Mathematics, Ph.D Mathematics
+teacher2,teacher2@school.com,Prof. Kumar,Physics,teacher,+919876543221,T002,Physics,M.Sc Physics, B.Ed</pre>
+                </div>
+            </div>
+            
+            <!-- Subjects Format -->
+            <div class="mb-6">
+                <h4 class="text-md font-medium text-gray-700 dark:text-gray-300 mb-2">Subjects CSV Format:</h4>
+                <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 overflow-x-auto">
+                    <pre class="text-sm text-gray-800 dark:text-gray-200">code,name,description,teacher_id,weekly_hours,grade_level,requires_lab,is_elective,max_students
+MATH10,Mathematics,Advanced Mathematics,T001,5,10,false,false,40
+PHY10,Physics,Physics for Grade 10,T002,4,10,true,false,30</pre>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Download Sample -->
+        <div class="mt-6 text-center">
+            <a href="{{ url_for('static', filename='sample_data.csv') }}" 
+               class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200 dark:bg-primary-900 dark:text-primary-300 dark:hover:bg-primary-800 transition-colors">
+                <i class="fas fa-download mr-2"></i>Download Sample CSV
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

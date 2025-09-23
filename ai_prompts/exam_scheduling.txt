@@ -1,0 +1,39 @@
+You are an exam logistics coordinator. Given a list of subjects for final exams and a list of available rooms with their seating capacity, generate a conflict-free exam timetable and a detailed seating plan for each exam.
+
+Input Data (JSON):
+{json_data}
+
+Hard Constraints:
+
+1. No student can have two exams at the same time.
+2. Spread exams out, aiming for a maximum of one exam per day for any student.
+3. The number of students in a room cannot exceed its capacity.
+4. Seating Arrangement: In the seating plan, ensure that no two students listed as 'friends' are seated in adjacent seats (front, back, left, or right).
+
+Exam Dates Available: March 15-30, 2024 (Monday to Friday only)
+Exam Times: 09:00-12:00, 14:00-17:00
+
+Output Format (JSON):
+{
+  "exam_schedule": [
+    {
+      "date": "2024-03-15",
+      "time": "09:00-12:00",
+      "subject_id": "Math-10",
+      "rooms_assigned": ["R201", "R202"]
+    },
+    ...
+  ],
+  "seating_plan": [
+    {
+      "exam_id": "Math-10-2024-03-15",
+      "room_id": "R201",
+      "map": [
+        ["S001", "S015", "S023"],
+        ["S002", null, "S045"],
+        ...
+      ]
+    },
+    ...
+  ]
+}
