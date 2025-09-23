@@ -5,7 +5,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, g
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, exc
 from sqlalchemy.orm import relationship
 
 # --- App Initialization ---
@@ -318,7 +318,6 @@ def manage_structure():
     if 'user_id' not in session: return redirect(url_for('login'))
     return render_template('structure.html')
 
-# --- API Routes for Structure Management ---
 @app.route('/api/structure/<mode>', methods=['GET'])
 def get_structure_items(mode):
     if 'user_id' not in session: return jsonify({"message": "Unauthorized"}), 401
@@ -432,7 +431,130 @@ def handle_college_structure(item_id=None):
         return jsonify({"message": "Semester deleted successfully!"})
 
 @app.route('/subjects')
-def manage_subjects(): return "<h1>Manage Subjects</h1>"
+def manage_subjects():
+    if 'user_id' not in session: return redirect(url_for('login'))
+    return render_template('subjects.html')
+
+# --- API Routes for Subject/Course Management ---
+@app.route('/api/subjects/parents/<mode>', methods=['GET'])
+def get_parent_data(mode):
+    if 'user_id' not in session: return jsonify({"message": "Unauthorized"}), 401
+    
+    parents = []
+    if mode == 'school':
+        groups = SchoolGroup.query.options(db.joinedload(SchoolGroup.streams)).all()
+        for group in groups:
+            parents.append({
+                "id": group.id,
+                "name": group.name,
+                "children": [{"id": s.id, "name": s.name} for s in group.streams]
+            })
+    elif mode == 'college':
+        semesters = Semester.query.options(db.joinedload(Semester.departments)).all()
+        for sem in semesters:
+            parents.append({
+                "id": sem.id,
+                "name": sem.name,
+                "children": [{"id": d.id, "name": d.name} for d in sem.departments]
+            })
+    return jsonify({"parents": parents})
+
+@app.route('/api/subjects/<mode>', methods=['GET'])
+def get_subjects_data(mode):
+    if 'user_id' not in session: return jsonify({"message": "Unauthorized"}), 401
+    parent_id = request.args.get('parent_id', type=int)
+    if not parent_id: return jsonify({"items": []})
+    
+    response = {"items": []}
+    if mode == 'school':
+        subjects = Subject.query.filter_by(stream_id=parent_id).all()
+        response['items'] = [
+            {"id": s.id, "name": s.name, "code": s.code, "weekly_hours": s.weekly_hours, "is_elective": s.is_elective, "stream_id": s.stream_id} for s in subjects
+        ]
+    elif mode == 'college':
+        courses = Course.query.filter_by(department_id=parent_id).all()
+        response['items'] = [
+            {"id": c.id, "name": c.name, "code": c.code, "credits": c.credits, "course_type": c.course_type, "department_id": c.department_id} for c in courses
+        ]
+    return jsonify(response)
+
+@app.route('/api/subjects/<mode>', methods=['POST'])
+@app.route('/api/subjects/<mode>/<int:item_id>', methods=['PUT', 'DELETE'])
+def handle_subjects(mode, item_id=None):
+    if 'user_id' not in session: return jsonify({"message": "Unauthorized"}), 401
+    
+    if request.method not in ['POST', 'PUT', 'DELETE']:
+        return jsonify({"message": "Method not allowed"}), 405
+
+    data = request.json if request.method in ['POST', 'PUT'] else None
+
+    try:
+        # --- Create Operation ---
+        if request.method == 'POST':
+            code = data.get('code')
+            if not code: return jsonify({"message": "Code is a required field."}), 400
+
+            if mode == 'school':
+                if Subject.query.filter_by(code=code).first():
+                    return jsonify({"message": f"Subject code '{code}' already exists."}), 409
+                new_item = Subject(name=data['name'], code=code, weekly_hours=data['weekly_hours'], is_elective=data.get('is_elective', False), stream_id=data['stream_id'])
+                db.session.add(new_item)
+                message = "Subject created successfully!"
+            
+            else: # college
+                if Course.query.filter_by(code=code).first():
+                    return jsonify({"message": f"Course code '{code}' already exists."}), 409
+                new_item = Course(name=data['name'], code=code, credits=data['credits'], course_type=data['course_type'], department_id=data['department_id'])
+                db.session.add(new_item)
+                message = "Course created successfully!"
+            
+            log_activity('info', f"{'Subject' if mode == 'school' else 'Course'} '{data['name']}' created.")
+
+        # --- Get item for Update/Delete ---
+        else:
+            item = Subject.query.get_or_404(item_id) if mode == 'school' else Course.query.get_or_404(item_id)
+
+            # --- Update Operation ---
+            if request.method == 'PUT':
+                new_code = data.get('code')
+                if not new_code: return jsonify({"message": "Code is a required field."}), 400
+
+                # Check for code uniqueness if it's being changed
+                if item.code != new_code:
+                    if mode == 'school' and Subject.query.filter_by(code=new_code).first():
+                        return jsonify({"message": f"Subject code '{new_code}' already exists."}), 409
+                    if mode == 'college' and Course.query.filter_by(code=new_code).first():
+                        return jsonify({"message": f"Course code '{new_code}' already exists."}), 409
+                
+                item.name = data['name']
+                item.code = new_code
+                if mode == 'school':
+                    item.weekly_hours = data['weekly_hours']
+                    item.is_elective = data.get('is_elective', False)
+                else: # college
+                    item.credits = data['credits']
+                    item.course_type = data['course_type']
+                
+                log_activity('info', f"{'Subject' if mode == 'school' else 'Course'} '{item.name}' updated.")
+                message = f"{'Subject' if mode == 'school' else 'Course'} updated successfully!"
+
+            # --- Delete Operation ---
+            elif request.method == 'DELETE':
+                db.session.delete(item)
+                log_activity('warning', f"{'Subject' if mode == 'school' else 'Course'} '{item.name}' deleted.")
+                message = f"{'Subject' if mode == 'school' else 'Course'} deleted successfully!"
+
+        db.session.commit()
+        return jsonify({"message": message})
+
+    except exc.IntegrityError as e:
+        db.session.rollback()
+        return jsonify({"message": "Database integrity error. Check for duplicate codes or invalid IDs."}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": f"An unexpected error occurred: {e}"}), 500
+
+
 @app.route('/staff')
 def manage_staff(): return "<h1>Manage Staff</h1>"
 @app.route('/sections')

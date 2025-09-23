@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Manage {{ 'Subjects' if g.app_mode == 'school' else 'Courses' }}
+{% endblock %}
+
+{% block header %}
+    <div class="flex-grow">
+        <h2 class="text-2xl font-bold text-white">Manage {{ 'Subjects' if g.app_mode == 'school' else 'Courses' }}</h2>
+        <p class="text-sm text-gray-400">Define the academic curriculum for your institution.</p>
+    </div>
+{% endblock %}
+
+{% block content %}
+<div class="glass-card rounded-2xl p-6 h-[calc(100vh-10rem)] flex flex-col">
+    <!-- Header with Filters and Add Button -->
+    <div class="flex-shrink-0 flex flex-col md:flex-row justify-between items-center pb-4 mb-4 border-b border-gray-700 gap-4">
+        <div class="w-full md:w-auto flex-grow grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <select id="primary-filter" class="input-base text-sm">
+                <option value="">-- Select {{ 'Group' if g.app_mode == 'school' else 'Semester' }} --</option>
+            </select>
+            <select id="secondary-filter" class="input-base text-sm" disabled>
+                <option value="">-- Select {{ 'Stream' if g.app_mode == 'school' else 'Department' }} --</option>
+            </select>
+        </div>
+        <button id="add-main-btn" class="btn-primary w-full md:w-auto" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Add New
+        </button>
+    </div>
+
+    <!-- Table View -->
+    <div id="table-container" class="flex-grow overflow-auto">
+        <div id="placeholder-view" class="h-full flex flex-col items-center justify-center text-center text-gray-500">
+             <svg class="h-12 w-12" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"></path>
+            </svg>
+            <p class="mt-4 font-semibold">Please select a filter above to view {{ 'subjects' if g.app_mode == 'school' else 'courses' }}.</p>
+        </div>
+        <table id="items-table" class="hidden w-full text-sm text-left text-gray-300">
+            <thead class="text-xs text-gray-400 uppercase bg-gray-800/50 sticky top-0">
+                <!-- JS will generate headers -->
+            </thead>
+            <tbody>
+                <!-- JS will generate rows -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<!-- ====== MODALS & TEMPLATES ====== -->
+<div id="form-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+    <div class="glass-card rounded-lg w-full max-w-2xl transform transition-all opacity-0 -translate-y-10">
+        <form class="p-6" onsubmit="return false;">
+            <!-- Content from templates will be injected here -->
+        </form>
+    </div>
+</div>
+
+<!-- School Subject Form Template -->
+<template id="school-form-template">
+    <h2 class="text-2xl font-bold text-white mb-6 form-title"></h2>
+    <input type="hidden" name="id">
+    <input type="hidden" name="stream_id">
+    <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+             <div><label class="block text-sm font-medium text-gray-300 mb-1">Subject Name</label><input type="text" name="name" class="input-base" placeholder="e.g., Physics" required></div>
+             <div><label class="block text-sm font-medium text-gray-300 mb-1">Subject Code</label><input type="text" name="code" class="input-base" placeholder="e.g., PHY-101" required></div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+            <div><label class="block text-sm font-medium text-gray-300 mb-1">Weekly Hours</label><input type="number" name="weekly_hours" class="input-base" placeholder="e.g., 4" required></div>
+            <div class="pt-7"><label class="flex items-center gap-x-2 text-sm text-gray-300"><input type="checkbox" name="is_elective" class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-600"> Is this an elective subject?</label></div>
+        </div>
+    </div>
+    <div class="flex justify-end gap-x-3 pt-6 mt-6 border-t border-gray-700">
+        <button type="button" class="cancel-btn btn-secondary">Cancel</button>
+        <button type="submit" class="save-btn btn-primary">Save Changes</button>
+    </div>
+</template>
+
+<!-- College Course Form Template -->
+<template id="college-form-template">
+    <h2 class="text-2xl font-bold text-white mb-6 form-title"></h2>
+    <input type="hidden" name="id">
+    <input type="hidden" name="department_id">
+    <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+             <div><label class="block text-sm font-medium text-gray-300 mb-1">Course Name</label><input type="text" name="name" class="input-base" placeholder="e.g., Data Structures" required></div>
+             <div><label class="block text-sm font-medium text-gray-300 mb-1">Course Code</label><input type="text" name="code" class="input-base" placeholder="e.g., CS-201" required></div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+            <div><label class="block text-sm font-medium text-gray-300 mb-1">Credits</label><input type="number" name="credits" class="input-base" placeholder="e.g., 3" required></div>
+            <div><label class="block text-sm font-medium text-gray-300 mb-1">Course Type</label><select name="course_type" class="input-base" required><option>Core</option><option>Elective</option><option>Lab</option></select></div>
+        </div>
+    </div>
+    <div class="flex justify-end gap-x-3 pt-6 mt-6 border-t border-gray-700">
+        <button type="button" class="cancel-btn btn-secondary">Cancel</button>
+        <button type="submit" class="save-btn btn-primary">Save Changes</button>
+    </div>
+</template>
+
+<!-- Other Modals (Toast, Confirm) -->
+<div id="toast" class="fixed top-5 right-5 bg-green-600 text-white py-2 px-5 rounded-lg shadow-lg text-sm transition-all opacity-0 transform translate-x-10 z-50" role="alert"></div>
+<div id="confirm-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
+    <div class="glass-card rounded-lg p-6 w-full max-w-sm text-center">
+        <h3 class="text-lg font-bold text-white mb-2">Are you sure?</h3>
+        <p id="confirm-text" class="text-sm text-gray-400 mb-6"></p>
+        <div class="flex justify-center gap-x-4">
+            <button id="confirm-cancel" class="btn-secondary px-6 py-2">Cancel</button>
+            <button id="confirm-delete" class="btn-danger px-6 py-2">Delete</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.input-base { background-color: rgba(31, 41, 55, 0.5); border: 1px solid #4b5563; color: #d1d5db; padding: 0.5rem 0.75rem; border-radius: 0.5rem; width: 100%; transition: all 0.2s ease; }
+.input-base:focus { outline: none; box-shadow: 0 0 0 2px #111827, 0 0 0 4px #8b5cf6; border-color: #8b5cf6; }
+.input-base:disabled { background-color: rgba(31, 41, 55, 0.2); cursor: not-allowed; }
+.btn-primary { background-color: #7c3aed; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; } .btn-primary:hover { background-color: #8b5cf6; } .btn-primary:disabled { background-color: #4c1d95; color: #a78bfa; cursor: not-allowed; }
+.btn-secondary { background-color: #4b5563; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 500; transition: all 0.2s ease; } .btn-secondary:hover { background-color: #6b7280; }
+.btn-danger { background-color: #be123c; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s ease; } .btn-danger:hover { background-color: #e11d48; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const APP_MODE = '{{ g.app_mode }}';
+    const API_BASE_URL = `/api/subjects/${APP_MODE}`;
+
+    // --- Element Refs ---
+    const primaryFilter = document.getElementById('primary-filter');
+    const secondaryFilter = document.getElementById('secondary-filter');
+    const addMainBtn = document.getElementById('add-main-btn');
+    const placeholderView = document.getElementById('placeholder-view');
+    const itemsTable = document.getElementById('items-table');
+    const tableHead = itemsTable.querySelector('thead');
+    const tableBody = itemsTable.querySelector('tbody');
+    const formModal = document.getElementById('form-modal');
+    const modalContent = formModal.querySelector('.glass-card');
+
+    // --- State ---
+    let parentData = [];
+    let items = [];
+
+    // --- API & Data ---
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+        try {
+            const options = { method, headers: { 'Content-Type': 'application/json' } };
+            if (body) options.body = JSON.stringify(body);
+            const response = await fetch(endpoint, options);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        } catch (error) {
+            showToast(`Error: ${error.message}`, 'error');
+            return null;
+        }
+    }
+
+    async function loadInitialData() {
+        const data = await apiRequest(`/api/subjects/parents/${APP_MODE}`);
+        if (data) {
+            parentData = data.parents;
+            parentData.forEach(parent => {
+                const option = document.createElement('option');
+                option.value = parent.id;
+                option.textContent = parent.name;
+                primaryFilter.appendChild(option);
+            });
+        }
+        renderTable();
+    }
+    
+    // --- Rendering & UI ---
+    function renderTable() {
+        const parentId = secondaryFilter.value;
+        if (!parentId) {
+            placeholderView.classList.remove('hidden');
+            itemsTable.classList.add('hidden');
+            return;
+        }
+        
+        placeholderView.classList.add('hidden');
+        itemsTable.classList.remove('hidden');
+
+        // Headers
+        const headers = APP_MODE === 'school' 
+            ? ['Name', 'Code', 'Weekly Hours', 'Elective', '']
+            : ['Name', 'Code', 'Credits', 'Type', ''];
+        tableHead.innerHTML = `<tr>${headers.map(h => `<th scope="col" class="px-6 py-3">${h}</th>`).join('')}</tr>`;
+
+        // Body
+        tableBody.innerHTML = '';
+        items.forEach(item => {
+            const row = tableBody.insertRow();
+            row.className = 'border-b border-gray-800 hover:bg-gray-800/50';
+            const cells = APP_MODE === 'school' ? [
+                item.name, item.code, item.weekly_hours, item.is_elective ? 'Yes' : 'No'
+            ] : [
+                item.name, item.code, item.credits, item.course_type
+            ];
+            
+            cells.forEach(cellData => {
+                const cell = row.insertCell();
+                cell.className = 'px-6 py-4';
+                cell.textContent = cellData;
+            });
+            
+            // Actions cell
+            const actionCell = row.insertCell();
+            actionCell.className = 'px-6 py-4 text-right';
+            actionCell.innerHTML = `
+                <button class="font-medium text-purple-400 hover:underline mr-4 edit-btn">Edit</button>
+                <button class="font-medium text-red-500 hover:underline delete-btn">Delete</button>
+            `;
+            actionCell.querySelector('.edit-btn').addEventListener('click', () => showForm(item));
+            actionCell.querySelector('.delete-btn').addEventListener('click', () => confirmDeletion(item.id, item.name));
+        });
+    }
+
+    function showForm(data = {}) {
+        const isNew = !data.id;
+        const formContainer = formModal.querySelector('form');
+        const templateId = APP_MODE === 'school' ? 'school-form-template' : 'college-form-template';
+        
+        // --- FIX ---
+        // Clear previous content and append the cloned template content robustly.
+        const template = document.getElementById(templateId);
+        const formContent = template.content.cloneNode(true);
+        formContainer.innerHTML = ''; 
+        formContainer.appendChild(formContent);
+        // --- END FIX ---
+
+        formContainer.querySelector('.form-title').textContent = `${isNew ? 'Create New' : 'Editing:'} ${isNew ? (APP_MODE === 'school' ? 'Subject' : 'Course') : data.name}`;
+        
+        // Populate form
+        Object.keys(data).forEach(key => {
+            const input = formContainer.querySelector(`[name="${key}"]`);
+            if (input) {
+                if(input.type === 'checkbox') input.checked = data[key];
+                else input.value = data[key];
+            }
+        });
+        
+        if (isNew) {
+            const parentKey = APP_MODE === 'school' ? 'stream_id' : 'department_id';
+            formContainer.querySelector(`[name="${parentKey}"]`).value = secondaryFilter.value;
+        }
+
+        formModal.classList.remove('hidden');
+        setTimeout(() => modalContent.classList.add('opacity-100', 'translate-y-0'), 10);
+
+        formContainer.querySelector('.save-btn').onclick = () => saveForm(formContainer, data.id);
+        formContainer.querySelector('.cancel-btn').onclick = hideForm;
+    }
+
+    function hideForm() {
+        modalContent.classList.remove('opacity-100', 'translate-y-0');
+        setTimeout(() => formModal.classList.add('hidden'), 200);
+    }
+    
+    // --- Event Listeners ---
+    primaryFilter.addEventListener('change', async () => {
+        const parentId = primaryFilter.value;
+        secondaryFilter.innerHTML = `<option value="">-- Select ${APP_MODE === 'school' ? 'Stream' : 'Department'} --</option>`;
+        secondaryFilter.disabled = true;
+        addMainBtn.disabled = true;
+        items = [];
+        
+        if (parentId) {
+            const selectedParent = parentData.find(p => p.id == parentId);
+            if(selectedParent && selectedParent.children) {
+                selectedParent.children.forEach(child => {
+                    const option = document.createElement('option');
+                    option.value = child.id;
+                    option.textContent = child.name;
+                    secondaryFilter.appendChild(option);
+                });
+                secondaryFilter.disabled = false;
+            }
+        }
+        renderTable();
+    });
+
+    secondaryFilter.addEventListener('change', async () => {
+        const parentId = secondaryFilter.value;
+        addMainBtn.disabled = !parentId;
+        items = [];
+
+        if(parentId) {
+            const data = await apiRequest(`${API_BASE_URL}?parent_id=${parentId}`);
+            if(data) items = data.items;
+        }
+        renderTable();
+    });
+
+    addMainBtn.addEventListener('click', () => showForm());
+
+    // --- Actions ---
+    async function saveForm(form, id) {
+        const formData = new FormData(form);
+        const payload = Object.fromEntries(formData.entries());
+        if(APP_MODE === 'school') payload.is_elective = form.querySelector('[name="is_elective"]').checked;
+
+        const result = await apiRequest(id ? `${API_BASE_URL}/${id}` : API_BASE_URL, id ? 'PUT' : 'POST', payload);
+        if (result) {
+            showToast(result.message, 'success');
+            hideForm();
+            const parentId = secondaryFilter.value;
+            const data = await apiRequest(`${API_BASE_URL}?parent_id=${parentId}`);
+            if(data) items = data.items;
+            renderTable();
+        }
+    }
+
+    function confirmDeletion(id, name) {
+        const modal = document.getElementById('confirm-modal');
+        document.getElementById('confirm-text').textContent = `This will permanently delete "${name}". This action cannot be undone.`;
+        modal.classList.remove('hidden');
+
+        const deleteHandler = async () => {
+            const result = await apiRequest(`${API_BASE_URL}/${id}`, 'DELETE');
+            if (result) {
+                showToast(result.message, 'success');
+                items = items.filter(i => i.id !== id);
+                renderTable();
+            }
+            closeConfirm();
+        };
+
+        const closeConfirm = () => {
+            modal.classList.add('hidden');
+            document.getElementById('confirm-delete').removeEventListener('click', deleteHandler);
+            document.getElementById('confirm-cancel').removeEventListener('click', closeConfirm);
+        };
+
+        document.getElementById('confirm-delete').addEventListener('click', deleteHandler, { once: true });
+        document.getElementById('confirm-cancel').addEventListener('click', closeConfirm, { once: true });
+    }
+    
+    function showToast(message, type = 'success') {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = `fixed top-5 right-5 text-white py-2 px-5 rounded-lg shadow-lg text-sm transition-all z-50`;
+        toast.classList.add(type === 'success' ? 'bg-green-600' : 'bg-red-600', 'opacity-100', 'translate-x-0');
+        setTimeout(() => {
+            toast.classList.remove('opacity-100', 'translate-x-0');
+            toast.classList.add('opacity-0', 'translate-x-10');
+        }, 3000);
+    }
+
+    // --- Initial Load ---
+    loadInitialData();
+});
+</script>
+{% endblock %}
+
