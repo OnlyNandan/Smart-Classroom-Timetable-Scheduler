@@ -137,12 +137,12 @@ def generate_gemini_prompt(teachers, sections, classrooms, subjects_or_courses, 
         teacher_info = {
             'id': teacher.id,
             'name': teacher.full_name,
-            'max_hours_week': teacher.max_hours_week,
+            'max_hours_week': teacher.max_weekly_hours,
             'subjects': [s.id for s in teacher.subjects] if teacher.subjects else [],
             'courses': [c.id for c in teacher.courses] if teacher.courses else [],
-            'expertise_level': 'senior' if teacher.max_hours_week > 25 else 'junior',
-            'preferred_periods': [1, 2, 3] if teacher.max_hours_week > 25 else [4, 5, 6],  # Senior teachers prefer morning
-            'homeroom_eligible': teacher.max_hours_week > 20  # Can be homeroom teacher
+            'expertise_level': 'senior' if teacher.max_weekly_hours > 25 else 'junior',
+            'preferred_periods': [1, 2, 3] if teacher.max_weekly_hours > 25 else [4, 5, 6],  # Senior teachers prefer morning
+            'homeroom_eligible': teacher.max_weekly_hours > 20  # Can be homeroom teacher
         }
         teachers_data.append(teacher_info)
     
@@ -158,7 +158,7 @@ def generate_gemini_prompt(teachers, sections, classrooms, subjects_or_courses, 
             'capacity': section.capacity,
             'student_count': len(section.students),
             'grade_level': grade_level,
-            'stream': section.stream.name if section.stream else None,
+            'stream': None,  # StudentSection doesn't have direct stream relationship
             'age_group': 'primary' if is_primary else 'secondary',
             'max_periods_per_day': 6 if is_primary else 8,
             'preferred_end_time': '13:30' if is_primary else '16:00',
@@ -507,7 +507,7 @@ def generate_substitution_prompt(affected_entries, available_teachers, reason):
             'name': teacher.full_name,
             'subjects': [s.name for s in teacher.subjects] if teacher.subjects else [],
             'courses': [c.name for c in teacher.courses] if teacher.courses else [],
-            'max_hours_week': teacher.max_hours_week,
+            'max_hours_week': teacher.max_weekly_hours,
             'current_load': len(TimetableEntry.query.filter_by(teacher_id=teacher.id).all())
         }
         teachers_data.append(teacher_info)

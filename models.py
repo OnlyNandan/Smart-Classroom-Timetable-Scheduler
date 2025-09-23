@@ -95,6 +95,8 @@ class StudentSection(db.Model):
     grade_id = db.Column(db.Integer, db.ForeignKey('grade.id'), nullable=True)
     department_id = db.Column(db.Integer, db.ForeignKey('department.id'), nullable=True)
     students = relationship("Student", backref="section")
+    grade = relationship("Grade", backref="sections")
+    department = relationship("Department", backref="sections")
 
 class Classroom(db.Model):
     id = db.Column(db.Integer, primary_key=True)
