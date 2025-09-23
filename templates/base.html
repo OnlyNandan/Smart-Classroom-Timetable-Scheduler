@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Dashboard{% endblock %} - Scheduler AI</title>
+    <title>{% block title %}Dashboard{% endblock %} - {{ institute_name }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
+<<<<<<< Updated upstream
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -71,10 +72,56 @@
                     <span class="mx-3 font-medium">{{ name }}</span>
                 </a>
                 {% endfor %}
+=======
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-card { background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .glass-sidebar { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(16px); border-right: 1px solid rgba(255, 255, 255, 0.1); }
+        .bg-gradient-body { background-color: #020617; background-image: radial-gradient(at 2% 5%, rgb(30, 27, 44) 0px, transparent 50%), radial-gradient(at 98% 98%, rgb(20, 32, 53) 0px, transparent 50%); }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px;}
+        .main-content { transition: margin-left 0.3s ease-in-out; }
+        .active-nav-link { background-color: rgba(124, 58, 237, 0.3); color: #c4b5fd; font-weight: 600; }
+        .active-nav-link svg { color: #a78bfa; }
+    </style>
+</head>
+<body class="bg-gradient-body text-gray-200">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Responsive Sidebar -->
+        <aside id="sidebar" class="w-64 flex-shrink-0 glass-sidebar fixed inset-y-0 left-0 z-30 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out">
+            <div class="flex items-center justify-center h-20 border-b border-gray-800">
+                <h1 class="text-2xl font-bold text-purple-400 px-4 text-center">{{ institute_name }}</h1>
+            </div>
+            <nav class="mt-4 px-4 space-y-2">
+                {% if g.app_mode %}
+                    {% set level_name = 'Structure' if g.app_mode == 'school' else 'Semesters' %}
+                    {% set section_name = 'Sections' if g.app_mode == 'school' else 'Batches' %}
+                    
+                    {% set nav_items = [
+                        ('dashboard', 'Dashboard', '<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />'),
+                        ('manage_structure', level_name, '<path stroke-linecap="round" stroke-linejoin="round" d="M12 12.75c1.148 0 2.278.08 3.383.237 1.037.148 1.875 1.05 1.875 2.108V18.75c0 1.104-.896 2-2 2H8.742c-1.104 0-2-.896-2-2v-3.655c0-1.058.838-1.96 1.875-2.108C9.722 12.83 10.852 12.75 12 12.75z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 12.75c-1.72 0-3.303-.42-4.646-1.172C6.23 11.02 6 10.373 6 9.75V6.75c0-.985.656-1.855 1.591-2.122C8.58 4.37 10.21 4.125 12 4.125c1.79 0 3.42.245 4.409.503C17.344 4.895 18 5.765 18 6.75v3c0 .623-.23 1.27-.654 1.828C16.003 12.33 14.42 12.75 12 12.75z" />'),
+                        ('manage_subjects', 'Subjects', '<path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />'),
+                        ('manage_staff', 'Teachers', '<path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-4.663M12 12A3.75 3.75 0 1012 4.5a3.75 3.75 0 000 7.5z" />'),
+                        ('manage_classrooms', 'Classrooms', '<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h6.75M9 11.25h6.75M9 15.75h6.75M9 20.25h6.75" />'),
+                        ('manage_sections', section_name, '<path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m-7.5-2.928A3 3 0 017.5 12.5m3 14.25v-2.545m0 0a3 3 0 01-3-3m3 3a3 3 0 00-3-3m-3.75 6.118a2.986 2.986 0 01-3.75 0M8.25 9.75A3.75 3.75 0 0112 6m3.75 3.75a3.75 3.75 0 01-7.5 0" />'),
+                        ('view_timetable', 'Timetable', '<path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0h18M12 12.75h.008v.008H12v-.008z" />')
+                    ] %}
+                    {% for route, name, svg_path in nav_items %}
+                    <a href="{{ url_for(route) }}" class="nav-link flex items-center px-4 py-3 text-gray-400 rounded-lg hover:bg-purple-500/20 hover:text-gray-200 transition-colors duration-200">
+                        <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">{{ svg_path | safe }}</svg>
+                        <span class="mx-3 font-medium">{{ name }}</span>
+                    </a>
+                    {% endfor %}
+                {% endif %}
+>>>>>>> Stashed changes
             </nav>
         </aside>
 
         <!-- Main Content -->
+<<<<<<< Updated upstream
         <div class="flex-1 flex flex-col overflow-hidden">
             <header class="flex items-center justify-between p-6 h-20">
                 <h2 class="text-2xl font-semibold text-gray-800 dark:text-white">{% block header %}{% endblock %}</h2>
@@ -85,13 +132,36 @@
                     </button>
                     <span class="text-gray-700 dark:text-gray-300 hidden sm:block">Welcome, {{ session.username }}</span>
                     <a href="{{ url_for('logout') }}" class="text-sm font-medium text-purple-600 dark:text-purple-400 hover:underline">Logout</a>
+=======
+        <div id="main-content" class="flex-1 flex flex-col overflow-hidden md:ml-64">
+            <header class="flex items-center justify-between p-4 h-20 bg-gray-900/50">
+                <!-- Hamburger Menu for Mobile -->
+                <button id="sidebar-toggle" class="md:hidden p-2 rounded-md text-gray-400 hover:bg-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <h2 class="text-2xl font-semibold text-white hidden sm:block">{% block header %}Dashboard{% endblock %}</h2>
+                
+                {% if session.username %}
+                <div class="relative">
+                    <button id="user-menu-button" class="flex items-center space-x-2">
+                        <span class="text-gray-300 hidden sm:block">Welcome, {{ session.username }}</span>
+                        <svg class="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                    </button>
+                    <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg py-1 z-20">
+                        <div class="px-4 py-2 text-xs text-gray-400">{{ session.role|capitalize }}</div>
+                        <a href="{{ url_for('logout') }}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Logout</a>
+                    </div>
+>>>>>>> Stashed changes
                 </div>
             </header>
             <main class="flex-1 overflow-x-hidden overflow-y-auto p-6">
                 {% block content %}{% endblock %}
             </main>
         </div>
+        <!-- Sidebar Overlay for Mobile -->
+        <div id="sidebar-overlay" class="hidden md:hidden fixed inset-0 bg-black/50 z-20"></div>
     </div>
+<<<<<<< Updated upstream
 
 <script>
 const themeToggleBtn = document.getElementById('theme-toggle');
@@ -117,6 +187,78 @@ themeToggleBtn.addEventListener('click', () => {
     const wasDark = isDarkMode();
     localStorage.setItem('color-theme', wasDark ? 'light' : 'dark');
     toggleTheme(!wasDark);
+=======
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const mainContent = document.getElementById('main-content');
+
+    const toggleSidebar = () => {
+        sidebar.classList.toggle('-translate-x-full');
+        sidebarOverlay.classList.toggle('hidden');
+        if (!sidebar.classList.contains('-translate-x-full')) {
+            // On non-mobile screens, adjust margin when sidebar is programmatically opened
+             if (window.innerWidth >= 768) { 
+                 mainContent.style.marginLeft = '16rem'; // w-64
+             }
+        } else {
+             if (window.innerWidth >= 768) {
+                mainContent.style.marginLeft = '0';
+             }
+        }
+    };
+
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleSidebar();
+        });
+    }
+
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener('click', toggleSidebar);
+    }
+    
+    // User menu dropdown
+    const userMenuButton = document.getElementById('user-menu-button');
+    const userMenu = document.getElementById('user-menu');
+    if(userMenuButton){
+        userMenuButton.addEventListener('click', () => {
+            userMenu.classList.toggle('hidden');
+        });
+        // Hide dropdown if clicked outside
+        document.addEventListener('click', (event) => {
+            if (!userMenuButton.contains(event.target) && !userMenu.contains(event.target)) {
+                userMenu.classList.add('hidden');
+            }
+        });
+    }
+
+    // Active nav link highlighting
+    const currentPath = window.location.pathname;
+    const navLinks = document.querySelectorAll('.nav-link');
+    navLinks.forEach(link => {
+        if (link.getAttribute('href') === currentPath) {
+            link.classList.add('active-nav-link');
+        }
+    });
+
+    // Adjust main content margin based on sidebar state on resize
+    window.addEventListener('resize', () => {
+        if (window.innerWidth >= 768) { // md breakpoint
+            mainContent.style.marginLeft = '16rem';
+            sidebar.classList.remove('-translate-x-full');
+            sidebarOverlay.classList.add('hidden');
+        } else {
+            mainContent.style.marginLeft = '0';
+            sidebar.classList.add('-translate-x-full');
+        }
+    });
+     if (window.innerWidth >= 768) { mainContent.classList.remove('md:ml-64'); }
+
+>>>>>>> Stashed changes
 });
 </script>
 {% block scripts %}{% endblock %}
