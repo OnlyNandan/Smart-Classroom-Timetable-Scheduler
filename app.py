@@ -5,19 +5,39 @@ from flask import Flask, render_template, request, redirect, url_for, session, g
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
-from sqlalchemy import ForeignKey, exc
+from sqlalchemy import ForeignKey, exc, Text
 from sqlalchemy.orm import relationship
+from sqlalchemy.types import TypeDecorator
+
+# --- Custom JSON Type for SQLite ---
+class JsonEncodedDict(TypeDecorator):
+    """Enables JSON storage by encoding and decoding on the fly."""
+    impl = Text
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        return json.dumps(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        return json.loads(value)
 
 # --- App Initialization ---
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 load_dotenv()
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///timetable.db')
+db_url = os.getenv('DATABASE_URL', 'sqlite:///timetable.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
+# Use JsonEncodedDict for SQLite, and the native JSON for others (like PostgreSQL/MySQL)
+json_type = JsonEncodedDict if 'sqlite' in db_url else db.JSON
+
 # --- Association Tables for Many-to-Many Relationships ---
-# CORRECTED: Split the single problematic association table into two distinct ones.
 teacher_school_subjects_association = db.Table('teacher_school_subjects',
     db.Column('teacher_id', db.Integer, db.ForeignKey('teacher.id'), primary_key=True),
     db.Column('subject_id', db.Integer, db.ForeignKey('subject.id'), primary_key=True)
@@ -75,7 +95,6 @@ class Teacher(db.Model):
     full_name = db.Column(db.String(120), nullable=False)
     max_weekly_hours = db.Column(db.Integer, nullable=False, default=20)
     user = relationship("User", back_populates="teacher")
-    # CORRECTED: Relationships now point to the new, separate association tables.
     subjects = relationship("Subject", secondary=teacher_school_subjects_association, backref="teachers_school")
     courses = relationship("Course", secondary=teacher_college_courses_association, backref="teachers_college")
 
@@ -91,6 +110,7 @@ class Classroom(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     room_id = db.Column(db.String(50), unique=True, nullable=False)
     capacity = db.Column(db.Integer, nullable=False)
+    features = db.Column(json_type, nullable=False, default=lambda: [])
 
 # --- Core Functional Models ---
 class TimetableEntry(db.Model):
@@ -619,7 +639,6 @@ def handle_staff(teacher_id=None):
                 })
             return jsonify({"teachers": teacher_list})
 
-        # CORRECTED: Only attempt to parse JSON for POST and PUT requests
         if request.method in ['POST', 'PUT']:
             data = request.json
         
@@ -691,7 +710,6 @@ def handle_staff(teacher_id=None):
 
         # --- Delete Operation ---
         if request.method == 'DELETE':
-            # Must delete the user first due to relationship cascade
             user_to_delete = teacher.user
             db.session.delete(teacher)
             db.session.delete(user_to_delete)
@@ -711,7 +729,65 @@ def handle_staff(teacher_id=None):
 @app.route('/sections')
 def manage_sections(): return "<h1>Manage Sections</h1>"
 @app.route('/classrooms')
-def manage_classrooms(): return "<h1>Manage Classrooms</h1>"
+def manage_classrooms():
+    if 'user_id' not in session: return redirect(url_for('login'))
+    return render_template('classrooms.html')
+
+@app.route('/api/classrooms', methods=['GET', 'POST'])
+@app.route('/api/classrooms/<int:classroom_id>', methods=['PUT', 'DELETE'])
+def handle_classrooms(classroom_id=None):
+    if 'user_id' not in session: return jsonify({"message": "Unauthorized"}), 401
+    
+    try:
+        if request.method == 'GET':
+            classrooms = Classroom.query.order_by(Classroom.room_id).all()
+            return jsonify({"classrooms": [
+                {"id": c.id, "room_id": c.room_id, "capacity": c.capacity, "features": c.features or []} for c in classrooms
+            ]})
+
+        if request.method in ['POST', 'PUT']:
+            data = request.json
+            if not data.get('room_id') or not data.get('capacity'):
+                return jsonify({"message": "Room ID and Capacity are required fields."}), 400
+
+        if request.method == 'POST':
+            if Classroom.query.filter_by(room_id=data['room_id']).first():
+                return jsonify({"message": f"Classroom with ID '{data['room_id']}' already exists."}), 409
+            
+            new_classroom = Classroom(
+                room_id=data['room_id'],
+                capacity=data['capacity'],
+                features=data.get('features', [])
+            )
+            db.session.add(new_classroom)
+            log_activity('info', f"Classroom '{data['room_id']}' created.")
+            message = "Classroom created successfully."
+
+        else: # PUT or DELETE
+            classroom = Classroom.query.get_or_404(classroom_id)
+            if request.method == 'PUT':
+                if classroom.room_id != data['room_id'] and Classroom.query.filter_by(room_id=data['room_id']).first():
+                    return jsonify({"message": f"Classroom with ID '{data['room_id']}' already exists."}), 409
+                
+                classroom.room_id = data['room_id']
+                classroom.capacity = data['capacity']
+                classroom.features = data.get('features', [])
+                log_activity('info', f"Classroom '{classroom.room_id}' updated.")
+                message = "Classroom updated successfully."
+            
+            elif request.method == 'DELETE':
+                db.session.delete(classroom)
+                log_activity('warning', f"Classroom '{classroom.room_id}' deleted.")
+                message = "Classroom deleted successfully."
+        
+        db.session.commit()
+        return jsonify({"message": message})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in handle_classrooms: {e}")
+        return jsonify({"message": "An unexpected server error occurred."}), 500
+
 @app.route('/timetable')
 def view_timetable(): return "<h1>View Timetable</h1>"
 @app.route('/analytics')

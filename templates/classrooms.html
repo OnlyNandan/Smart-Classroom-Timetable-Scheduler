@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+{% extends "base.html" %}
+
+{% block title %}Manage Classrooms{% endblock %}
+
+{% block header %}
+<div class="flex-grow">
+    <h2 class="text-2xl font-bold text-white">Manage Classrooms</h2>
+    <p class="text-sm text-gray-400">Oversee all physical rooms and learning spaces.</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="app" class="space-y-6">
+    <!-- Header with Search and Add Button -->
+    <div class="flex justify-between items-center bg-slate-900/50 p-4 rounded-xl">
+        <div class="relative w-full max-w-xs">
+            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </div>
+            <input type="text" v-model="searchQuery" placeholder="Search classrooms..." class="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+        </div>
+        <button @click="openModal()" class="btn-primary inline-flex items-center justify-center px-4 py-2 font-semibold text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+            Add New Classroom
+        </button>
+    </div>
+
+    <!-- Classrooms Table -->
+    <div class="overflow-x-auto glass-card rounded-xl">
+        <table class="w-full text-sm text-left text-gray-300">
+            <thead class="text-xs text-gray-400 uppercase bg-gray-900/50">
+                <tr>
+                    <th scope="col" class="px-6 py-3">Room ID / Name</th>
+                    <th scope="col" class="px-6 py-3">Capacity</th>
+                    <th scope="col" class="px-6 py-3">Features</th>
+                    <th scope="col" class="px-6 py-3 text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-if="filteredClassrooms.length === 0">
+                    <td colspan="4" class="text-center py-8 text-gray-500">No classrooms found.</td>
+                </tr>
+                <tr v-for="classroom in filteredClassrooms" :key="classroom.id" class="border-b border-gray-800 hover:bg-slate-800/40">
+                    <td class="px-6 py-4 font-medium text-white whitespace-nowrap">${ classroom.room_id }</td>
+                    <td class="px-6 py-4">${ classroom.capacity }</td>
+                    <td class="px-6 py-4">
+                        <span v-for="feature in classroom.features" :key="feature" class="inline-block bg-gray-700 text-gray-300 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">
+                            ${ feature }
+                        </span>
+                         <span v-if="!classroom.features || classroom.features.length === 0" class="text-gray-500">None</span>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <button @click="openModal(classroom)" class="font-medium text-purple-400 hover:underline mr-4">Edit</button>
+                        <button @click="deleteClassroom(classroom)" class="font-medium text-red-500 hover:underline">Delete</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm" @click.self="closeModal">
+        <div class="bg-gray-900 border border-gray-700 rounded-2xl shadow-xl w-full max-w-lg mx-4" @click.stop>
+            <div class="flex items-center justify-between p-5 border-b border-gray-700">
+                <h3 class="text-xl font-semibold text-white">${ modal.isEdit ? 'Edit Classroom' : 'Add New Classroom' }</h3>
+                <button @click="closeModal" class="text-gray-400 hover:text-white">&times;</button>
+            </div>
+            <div class="p-6 space-y-6">
+                <div>
+                    <label for="room_id" class="block mb-2 text-sm font-medium text-gray-300">Room ID / Name</label>
+                    <input type="text" v-model="modal.data.room_id" id="room_id" class="input-base w-full" placeholder="e.g., Room 101 or Physics Lab">
+                </div>
+                <div>
+                    <label for="capacity" class="block mb-2 text-sm font-medium text-gray-300">Capacity</label>
+                    <input type="number" v-model.number="modal.data.capacity" id="capacity" class="input-base w-full" placeholder="e.g., 30">
+                </div>
+                <div>
+                    <label class="block mb-2 text-sm font-medium text-gray-300">Features</label>
+                    <div class="flex flex-wrap gap-2">
+                        <button v-for="feature in availableFeatures" :key="feature" @click="toggleFeature(feature)"
+                                :class="['px-3 py-1.5 text-sm font-medium rounded-full transition', isFeatureSelected(feature) ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600']">
+                            ${ feature }
+                        </button>
+                    </div>
+                </div>
+                 <div class="text-red-400 text-sm" v-if="modal.error">${ modal.error }</div>
+            </div>
+            <div class="flex items-center justify-end p-5 border-t border-gray-700 rounded-b-xl space-x-3">
+                <button @click="closeModal" class="btn-secondary px-5 py-2.5">Cancel</button>
+                <button @click="saveClassroom" class="btn-primary px-5 py-2.5" :disabled="isSaving">
+                    ${ isSaving ? 'Saving...' : 'Save Classroom' }
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.btn-primary { background-color: #7c3aed; color: white; } .btn-primary:hover { background-color: #8b5cf6; } .btn-primary:disabled { background-color: #585068; cursor: not-allowed; }
+.btn-secondary { background-color: #4b5563; color: white; } .btn-secondary:hover { background-color: #6b7280; }
+.input-base { background-color: rgba(31, 41, 55, 0.5); border: 1px solid #4b5563; color: #d1d5db; padding: 0.65rem 1rem; border-radius: 0.5rem; width: 100%; transition: all 0.2s ease; }
+.input-base:focus { outline: none; box-shadow: 0 0 0 2px #111827, 0 0 0 4px #8b5cf6; border-color: #8b5cf6; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/vue@3.2.47/dist/vue.global.prod.js"></script>
+<script>
+    const { createApp, ref, reactive, onMounted, computed } = Vue;
+
+    createApp({
+        setup() {
+            const classrooms = ref([]);
+            const searchQuery = ref('');
+            const showModal = ref(false);
+            const isSaving = ref(false);
+
+            const modal = reactive({
+                isEdit: false,
+                data: {},
+                error: ''
+            });
+
+            const availableFeatures = [
+                'Projector', 'Whiteboard', 'Computer Lab', 'Science Lab', 'Art Studio', 'Auditorium'
+            ];
+
+            const fetchClassrooms = async () => {
+                try {
+                    const response = await fetch("{{ url_for('handle_classrooms') }}");
+                    if (!response.ok) throw new Error('Failed to fetch classrooms.');
+                    const data = await response.json();
+                    classrooms.value = data.classrooms;
+                } catch (error) {
+                    console.error("Error fetching classrooms:", error);
+                }
+            };
+
+            const filteredClassrooms = computed(() => {
+                if (!searchQuery.value) return classrooms.value;
+                const lowerQuery = searchQuery.value.toLowerCase();
+                return classrooms.value.filter(c => 
+                    c.room_id.toLowerCase().includes(lowerQuery) ||
+                    c.features.some(f => f.toLowerCase().includes(lowerQuery))
+                );
+            });
+
+            const openModal = (classroom = null) => {
+                modal.error = '';
+                if (classroom) {
+                    modal.isEdit = true;
+                    modal.data = { ...classroom, features: [...classroom.features] };
+                } else {
+                    modal.isEdit = false;
+                    modal.data = { room_id: '', capacity: 30, features: [] };
+                }
+                showModal.value = true;
+            };
+
+            const closeModal = () => {
+                showModal.value = false;
+            };
+
+            const toggleFeature = (feature) => {
+                const index = modal.data.features.indexOf(feature);
+                if (index > -1) {
+                    modal.data.features.splice(index, 1);
+                } else {
+                    modal.data.features.push(feature);
+                }
+            };
+            
+            const isFeatureSelected = (feature) => {
+                return modal.data.features.includes(feature);
+            };
+
+            const saveClassroom = async () => {
+                if (!modal.data.room_id || !modal.data.capacity) {
+                    modal.error = "Room ID and Capacity are required.";
+                    return;
+                }
+                isSaving.value = true;
+                modal.error = '';
+                
+                const url = modal.isEdit ? `{{ url_for('handle_classrooms') }}/${modal.data.id}` : "{{ url_for('handle_classrooms') }}";
+                const method = modal.isEdit ? 'PUT' : 'POST';
+
+                try {
+                    const response = await fetch(url, {
+                        method: method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(modal.data)
+                    });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.message || 'Failed to save.');
+                    
+                    await fetchClassrooms();
+                    closeModal();
+                } catch (error) {
+                    modal.error = error.message;
+                } finally {
+                    isSaving.value = false;
+                }
+            };
+            
+            const deleteClassroom = async (classroom) => {
+                if (!confirm(`Are you sure you want to delete classroom '${classroom.room_id}'?`)) return;
+
+                try {
+                    const response = await fetch(`{{ url_for('handle_classrooms') }}/${classroom.id}`, { method: 'DELETE' });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.message || 'Failed to delete.');
+                    
+                    await fetchClassrooms();
+                } catch (error) {
+                    alert(`Error: ${error.message}`);
+                }
+            };
+
+            onMounted(fetchClassrooms);
+
+            return {
+                searchQuery,
+                filteredClassrooms,
+                showModal,
+                isSaving,
+                modal,
+                availableFeatures,
+                openModal,
+                closeModal,
+                toggleFeature,
+                isFeatureSelected,
+                saveClassroom,
+                deleteClassroom
+            };
+        },
+        compilerOptions: {
+            delimiters: ['${', '}']
+        }
+    }).mount('#app');
+</script>
+{% endblock %}
+</html>
