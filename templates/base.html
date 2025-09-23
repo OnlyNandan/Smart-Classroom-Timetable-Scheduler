@@ -17,6 +17,15 @@
         ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px;}
         .active-nav-link { background-color: rgba(124, 58, 237, 0.3); color: #c4b5fd; font-weight: 600; }
         .active-nav-link svg { color: #a78bfa; }
+        /* Shared form controls */
+        .input-base { background-color: rgba(31, 41, 55, 0.5); border: 1px solid #4b5563; color: #d1d5db; padding: 0.5rem 0.75rem; border-radius: 0.5rem; width: 100%; transition: all 0.2s ease; }
+        .input-base:focus { outline: none; box-shadow: 0 0 0 2px #111827, 0 0 0 4px #8b5cf6; border-color: #8b5cf6; }
+        .input-base:disabled { background-color: #111827; color: #9ca3af; cursor: not-allowed; }
+        .btn-primary { background-color: #7c3aed; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s ease; box-shadow: 0 10px 15px -3px rgba(88, 28, 135, 0.25); }
+        .btn-primary:hover { background-color: #8b5cf6; }
+        .btn-primary:disabled { background-color: #6b7280; cursor: not-allowed; }
+        .btn-secondary { background-color: #4b5563; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s ease; }
+        .btn-secondary:hover { background-color: #6b7280; }
         
         /* Enhanced accessibility features */
         .focus-visible:focus-visible {
