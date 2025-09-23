@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 from flask import Blueprint, render_template, request, redirect, url_for, session, g, flash, jsonify
 from sqlalchemy import exc
 
@@ -122,6 +123,7 @@ def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('main.login'))
     
+    # Get current statistics
     stats = {
         'teachers': User.query.filter_by(role='teacher').count(),
         'total_students': User.query.filter_by(role='student').count(),
@@ -132,6 +134,28 @@ def dashboard():
     else:
         stats['subjects'] = Course.query.count()
 
+    # Update system metrics for growth calculation
+    today = datetime.now(timezone.utc).date()
+    
+    # Update or create metrics for today
+    metrics_to_update = [
+        ('total_students', stats['total_students']),
+        ('total_teachers', stats['teachers']),
+        ('total_subjects', stats['subjects']),
+        ('classes_scheduled', stats['classes_scheduled'])
+    ]
+    
+    for metric_key, current_value in metrics_to_update:
+        existing_metric = SystemMetric.query.filter_by(key=metric_key, date=today).first()
+        if existing_metric:
+            existing_metric.value = current_value
+        else:
+            new_metric = SystemMetric(key=metric_key, value=current_value, date=today)
+            db.session.add(new_metric)
+    
+    db.session.commit()
+
+    # Calculate growth percentages
     stats['students_growth'] = calculate_growth('total_students', stats['total_students'])
     stats['teachers_growth'] = calculate_growth('total_teachers', stats['teachers'])
     stats['subjects_growth'] = calculate_growth('total_subjects', stats['subjects'])

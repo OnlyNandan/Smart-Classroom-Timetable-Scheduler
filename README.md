@@ -33,11 +33,12 @@ The platform provides a modern, sleek **"glass" UI** for administrators to manag
 ## 3. Tech Stack
 
 - **Backend:** Python, Flask  
-- **Database:** MySQL  
+- **Database:** SQLite (default) / MySQL / PostgreSQL  
 - **ORM:** Flask-SQLAlchemy  
-- **Scheduling Algorithm:** Genetic Algorithm implemented in Python with Pandas  
+- **Scheduling Algorithm:** Gemini AI API for intelligent timetable generation  
 - **Frontend:** HTML, Tailwind CSS, JavaScript  
 - **Charting:** Chart.js  
+- **AI Integration:** Google Gemini API  
 
 ---
 
@@ -45,7 +46,8 @@ The platform provides a modern, sleek **"glass" UI** for administrators to manag
 
 ### Prerequisites
 - Python 3.8+  
-- A running MySQL server instance  
+- Google Gemini API Key (for AI-powered timetable generation)
+- Optional: MySQL/PostgreSQL server (SQLite is used by default)  
 
 ### Step-by-Step Guide
 
@@ -70,63 +72,105 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Set Up the MySQL Database
+#### 3. Environment Configuration
 
-Log in to your MySQL server.
+Create a `.env` file in the project root with the following variables:
 
-Create a new database for the project. The application is configured to use the name timetabledb.
+```env
+# Flask Configuration
+SECRET_KEY=your-secret-key-here
+DATABASE_URL=sqlite:///timetable.db
 
-CREATE DATABASE timetabledb;
+# Gemini AI API Configuration
+GEMINI_API_KEY=your-gemini-api-key-here
 
-Configure the Database Connection
+# Optional: Database Configuration (if using MySQL/PostgreSQL)
+# DATABASE_URL=mysql://username:password@localhost/database_name
+# DATABASE_URL=postgresql://username:password@localhost/database_name
+```
 
-Open the app.py file.
+**Getting a Gemini API Key:**
+1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Sign in with your Google account
+3. Create a new API key
+4. Copy the key and add it to your `.env` file
 
-Verify that the SQLALCHEMY_DATABASE_URI string matches your MySQL credentials (username, password, host, and database name). The default is set to:
+#### 4. Database Setup
 
-'mysql+pymysql://root:secretpassword@localhost/timetabledb'
+The application uses SQLite by default, which requires no additional setup. If you prefer MySQL or PostgreSQL:
 
-Initialize the Database
-Run the init_db.py script once to create all the necessary tables and populate the database with initial sample data (users, courses, teachers, etc.).
+**For MySQL:**
+1. Create a database: `CREATE DATABASE timetabledb;`
+2. Update the `DATABASE_URL` in your `.env` file
+3. Install PyMySQL: `pip install PyMySQL`
 
-python init_db.py
+**For PostgreSQL:**
+1. Create a database: `CREATE DATABASE timetabledb;`
+2. Update the `DATABASE_URL` in your `.env` file
+3. Install psycopg2: `pip install psycopg2-binary`
 
-This will also create a default admin user.
+#### 5. Run the Application
 
-Run the Flask Application
-Start the development server.
+Start the development server:
 
+```bash
 python app.py
+```
 
-The application will now be running at http://127.0.0.1:5000.
+The application will be running at http://127.0.0.1:5000.
 
-5. How to Use the Application
-Log In
+---
 
-Navigate to http://127.0.0.1:5000 in your web browser.
+## 5. How to Use the Application
 
-Log in with the default administrator credentials:
+### Initial Setup
+1. Navigate to http://127.0.0.1:5000
+2. Complete the initial setup wizard
+3. Configure your institution type (School/College)
+4. Set up basic timetable settings (working days, periods, etc.)
 
-Username: admin
+### Managing Data
+1. **Structure**: Set up grades/streams (school) or semesters/departments (college)
+2. **Subjects/Courses**: Add subjects or courses with their requirements
+3. **Staff**: Add teachers and assign them to subjects/courses
+4. **Sections**: Create student sections/classes
+5. **Classrooms**: Add available classrooms and their features
 
-Password: admin
+### Generating Timetables
+1. Navigate to the **Timetable** page
+2. Click **"Generate Timetable"** button
+3. The AI will analyze all constraints and generate an optimal schedule
+4. View the generated timetable in the interactive grid
 
-Manage Master Data
+### Features
+- **Multi-view Support**: View by section, teacher, or classroom
+- **Filtering**: Filter timetables by specific criteria
+- **Export**: Export timetables for printing or sharing
+- **Real-time Updates**: See changes immediately
+- **Conflict Detection**: Automatic detection of scheduling conflicts
 
-Use the sidebar to navigate to the Courses, Teachers, Classrooms, and Student Groups pages.
+---
 
-Add the necessary data for your institution. The application comes with pre-populated sample data.
+## 6. Key Features
 
-Generate a Timetable
+### AI-Powered Generation
+- Uses Google Gemini AI for intelligent timetable optimization
+- Considers teacher availability, classroom capacity, and subject requirements
+- Minimizes conflicts and maximizes efficiency
 
-Navigate back to the Dashboard.
+### Flexible Institution Support
+- **School Mode**: Grades, Streams, Subjects with weekly hours
+- **College Mode**: Semesters, Departments, Courses with credits
+- Automatic adaptation based on institution type
 
-Click the "Generate New Timetable" button.
+### Modern Interface
+- Responsive design that works on all devices
+- Glass-morphism UI with smooth animations
+- Dark/light mode support
+- Intuitive navigation and controls
 
-Wait for the Genetic Algorithm to finish processing. You can monitor the progress in the terminal where the Flask app is running.
-
-You will see a success message on the dashboard upon completion.
-
-View the Timetable
-
-Click on the "Timetable" link in the sidebar to see the newly generated schedule in a grid view.
+### Comprehensive Management
+- Full CRUD operations for all entities
+- Bulk operations and data validation
+- Activity logging and audit trails
+- Export capabilities for reports

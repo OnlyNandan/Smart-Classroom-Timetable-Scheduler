@@ -1,0 +1,578 @@
+{% extends "base.html" %}
+
+{% block title %}Timetable Management{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">Timetable Management</h1>
+            <p class="text-gray-600">Manage and generate timetables for all classes, grades, and streams</p>
+        </div>
+
+        <!-- Controls Panel -->
+        <div class="glass-card mb-6 p-6">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center gap-4">
+                    <!-- Filter Controls -->
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm font-medium text-gray-700">View:</label>
+                        <select id="view-mode" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="all">All Classes</option>
+                            <option value="section">By Section</option>
+                            <option value="teacher">By Teacher</option>
+                            <option value="classroom">By Classroom</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm font-medium text-gray-700">Filter:</label>
+                        <select id="filter-select" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">Select to filter...</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm font-medium text-gray-700">Week:</label>
+                        <select id="week-select" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="current">Current Week</option>
+                            <option value="next">Next Week</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button id="generate-btn" class="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-2 rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        Generate Timetable
+                    </button>
+                    
+                    <button id="export-btn" class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Export
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timetable Display -->
+        <div class="glass-card p-6">
+            <div class="mb-4 flex items-center justify-between">
+                <h2 class="text-2xl font-semibold text-gray-800">Timetable</h2>
+                <div class="flex items-center gap-2 text-sm text-gray-600">
+                    <span id="last-generated">Last generated: Never</span>
+                    <span id="generation-status" class="px-2 py-1 rounded-full text-xs"></span>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading-state" class="hidden text-center py-12">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p class="mt-2 text-gray-600">Loading timetable...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden text-center py-12">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">No timetable data</h3>
+                <p class="mt-1 text-sm text-gray-500">Generate a timetable to get started.</p>
+                <div class="mt-6">
+                    <button id="generate-empty-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        Generate Timetable
+                    </button>
+                </div>
+            </div>
+
+            <!-- Timetable Grid -->
+            <div id="timetable-container" class="hidden">
+                <div class="overflow-x-auto">
+                    <table id="timetable-table" class="w-full border-collapse">
+                        <thead>
+                            <tr id="table-header" class="bg-gray-50">
+                                <!-- Headers will be populated by JavaScript -->
+                            </tr>
+                        </thead>
+                        <tbody id="table-body">
+                            <!-- Rows will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Panel -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
+            <div class="glass-card p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Total Classes</p>
+                        <p id="total-classes" class="text-2xl font-semibold text-gray-900">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-green-100 text-green-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Scheduled</p>
+                        <p id="scheduled-classes" class="text-2xl font-semibold text-gray-900">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Conflicts</p>
+                        <p id="conflicts" class="text-2xl font-semibold text-gray-900">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card p-6">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Efficiency</p>
+                        <p id="efficiency" class="text-2xl font-semibold text-gray-900">0%</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Generation Modal -->
+<div id="generation-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg max-w-md w-full p-6">
+            <div class="text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+                    <svg class="h-6 w-6 text-blue-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Generating Timetable</h3>
+                <p class="text-sm text-gray-500 mb-4">Please wait while AI generates the optimal timetable...</p>
+                <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
+                    <div id="progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p id="progress-text" class="text-xs text-gray-500">Initializing...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="fixed top-5 right-5 z-50 hidden">
+    <div class="bg-white rounded-lg shadow-lg border-l-4 p-4 max-w-sm">
+        <div class="flex items-center">
+            <div id="toast-icon" class="flex-shrink-0"></div>
+            <div class="ml-3">
+                <p id="toast-message" class="text-sm font-medium text-gray-900"></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const APP_MODE = '{{ g.app_mode }}';
+    const SETTINGS = {{ settings | tojson }};
+    
+    // Element references
+    const viewModeSelect = document.getElementById('view-mode');
+    const filterSelect = document.getElementById('filter-select');
+    const weekSelect = document.getElementById('week-select');
+    const generateBtn = document.getElementById('generate-btn');
+    const exportBtn = document.getElementById('export-btn');
+    const generateEmptyBtn = document.getElementById('generate-empty-btn');
+    const timetableContainer = document.getElementById('timetable-container');
+    const emptyState = document.getElementById('empty-state');
+    const loadingState = document.getElementById('loading-state');
+    const generationModal = document.getElementById('generation-modal');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    const toast = document.getElementById('toast');
+    
+    // State
+    let timetableData = [];
+    let filteredData = [];
+    let currentView = 'all';
+    let currentFilter = '';
+    
+    // Initialize
+    loadTimetableData();
+    setupEventListeners();
+    loadFilterOptions();
+    
+    function setupEventListeners() {
+        viewModeSelect.addEventListener('change', handleViewChange);
+        filterSelect.addEventListener('change', handleFilterChange);
+        weekSelect.addEventListener('change', handleWeekChange);
+        generateBtn.addEventListener('click', generateTimetable);
+        generateEmptyBtn.addEventListener('click', generateTimetable);
+        exportBtn.addEventListener('click', exportTimetable);
+    }
+    
+    async function loadTimetableData() {
+        showLoading();
+        try {
+            const response = await fetch('/api/timetable_data');
+            if (response.ok) {
+                timetableData = await response.json();
+                filteredData = [...timetableData];
+                updateStatistics();
+                renderTimetable();
+                hideLoading();
+                
+                if (timetableData.length === 0) {
+                    showEmptyState();
+                } else {
+                    showTimetable();
+                }
+            } else {
+                throw new Error('Failed to load timetable data');
+            }
+        } catch (error) {
+            console.error('Error loading timetable:', error);
+            showToast('Failed to load timetable data', 'error');
+            hideLoading();
+            showEmptyState();
+        }
+    }
+    
+    async function loadFilterOptions() {
+        try {
+            let options = [];
+            
+            if (currentView === 'section') {
+                const response = await fetch('/api/sections');
+                if (response.ok) {
+                    const data = await response.json();
+                    options = data.sections.map(section => ({
+                        value: section.id,
+                        text: section.name
+                    }));
+                }
+            } else if (currentView === 'teacher') {
+                const response = await fetch('/api/staff');
+                if (response.ok) {
+                    const data = await response.json();
+                    options = data.teachers.map(teacher => ({
+                        value: teacher.id,
+                        text: teacher.full_name
+                    }));
+                }
+            } else if (currentView === 'classroom') {
+                const response = await fetch('/api/classrooms');
+                if (response.ok) {
+                    const data = await response.json();
+                    options = data.classrooms.map(classroom => ({
+                        value: classroom.id,
+                        text: classroom.room_id
+                    }));
+                }
+            }
+            
+            updateFilterOptions(options);
+        } catch (error) {
+            console.error('Error loading filter options:', error);
+        }
+    }
+    
+    function updateFilterOptions(options) {
+        filterSelect.innerHTML = '<option value="">Select to filter...</option>';
+        options.forEach(option => {
+            const optionElement = document.createElement('option');
+            optionElement.value = option.value;
+            optionElement.textContent = option.text;
+            filterSelect.appendChild(optionElement);
+        });
+    }
+    
+    function handleViewChange() {
+        currentView = viewModeSelect.value;
+        currentFilter = '';
+        filterSelect.value = '';
+        loadFilterOptions();
+        applyFilters();
+    }
+    
+    function handleFilterChange() {
+        currentFilter = filterSelect.value;
+        applyFilters();
+    }
+    
+    function handleWeekChange() {
+        // Implement week filtering logic
+        applyFilters();
+    }
+    
+    function applyFilters() {
+        filteredData = [...timetableData];
+        
+        if (currentFilter) {
+            filteredData = filteredData.filter(entry => {
+                switch (currentView) {
+                    case 'section':
+                        return entry.section_id == currentFilter;
+                    case 'teacher':
+                        return entry.teacher_id == currentFilter;
+                    case 'classroom':
+                        return entry.classroom_id == currentFilter;
+                    default:
+                        return true;
+                }
+            });
+        }
+        
+        renderTimetable();
+    }
+    
+    function renderTimetable() {
+        if (filteredData.length === 0) {
+            showEmptyState();
+            return;
+        }
+        
+        showTimetable();
+        
+        // Create timetable grid
+        const days = SETTINGS.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        const periods = generatePeriods();
+        
+        // Create header
+        const headerRow = document.getElementById('table-header');
+        headerRow.innerHTML = '<th class="border border-gray-300 px-4 py-2 bg-gray-100 font-medium">Time</th>';
+        days.forEach(day => {
+            headerRow.innerHTML += `<th class="border border-gray-300 px-4 py-2 bg-gray-100 font-medium">${day}</th>`;
+        });
+        
+        // Create body
+        const tbody = document.getElementById('table-body');
+        tbody.innerHTML = '';
+        
+        periods.forEach(period => {
+            const row = document.createElement('tr');
+            row.innerHTML = `<td class="border border-gray-300 px-4 py-2 bg-gray-50 font-medium">${period.time}</td>`;
+            
+            days.forEach(day => {
+                const cellData = filteredData.filter(entry => 
+                    entry.day === day && entry.period === period.number
+                );
+                
+                const cell = document.createElement('td');
+                cell.className = 'border border-gray-300 px-2 py-1 min-h-[60px]';
+                
+                if (cellData.length > 0) {
+                    cellData.forEach(entry => {
+                        const classDiv = document.createElement('div');
+                        classDiv.className = 'bg-blue-100 border border-blue-300 rounded p-2 mb-1 text-xs';
+                        classDiv.innerHTML = `
+                            <div class="font-medium">${entry.subject}</div>
+                            <div class="text-gray-600">${entry.teacher}</div>
+                            <div class="text-gray-500">${entry.section} - ${entry.classroom}</div>
+                        `;
+                        cell.appendChild(classDiv);
+                    });
+                } else {
+                    cell.innerHTML = '<div class="text-gray-400 text-center py-4">-</div>';
+                }
+                
+                row.appendChild(cell);
+            });
+            
+            tbody.appendChild(row);
+        });
+    }
+    
+    function generatePeriods() {
+        const startTime = SETTINGS.start_time || '09:00';
+        const endTime = SETTINGS.end_time || '17:00';
+        const periodDuration = parseInt(SETTINGS.period_duration) || 60;
+        const breaks = SETTINGS.breaks || [];
+        
+        const periods = [];
+        const start = parseTime(startTime);
+        const end = parseTime(endTime);
+        
+        let currentTime = start;
+        let periodNumber = 1;
+        
+        while (currentTime < end) {
+            const periodEnd = new Date(currentTime.getTime() + periodDuration * 60000);
+            
+            periods.push({
+                number: periodNumber,
+                time: formatTime(currentTime) + ' - ' + formatTime(periodEnd)
+            });
+            
+            currentTime = periodEnd;
+            periodNumber++;
+            
+            // Add break time if needed
+            if (breaks.some(breakTime => formatTime(currentTime) === breakTime.start)) {
+                const breakDuration = breaks.find(breakTime => formatTime(currentTime) === breakTime.start)?.duration || 15;
+                currentTime = new Date(currentTime.getTime() + breakDuration * 60000);
+            }
+        }
+        
+        return periods;
+    }
+    
+    function parseTime(timeStr) {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        const date = new Date();
+        date.setHours(hours, minutes, 0, 0);
+        return date;
+    }
+    
+    function formatTime(date) {
+        return date.toTimeString().slice(0, 5);
+    }
+    
+    async function generateTimetable() {
+        showGenerationModal();
+        
+        try {
+            // Simulate progress
+            simulateProgress();
+            
+            const response = await fetch('/generate_timetable', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                hideGenerationModal();
+                showToast(result.message, 'success');
+                loadTimetableData();
+            } else {
+                const error = await response.json();
+                throw new Error(error.message || 'Generation failed');
+            }
+        } catch (error) {
+            hideGenerationModal();
+            showToast('Failed to generate timetable: ' + error.message, 'error');
+        }
+    }
+    
+    function simulateProgress() {
+        const steps = [
+            { progress: 20, text: 'Analyzing constraints...' },
+            { progress: 40, text: 'Optimizing schedule...' },
+            { progress: 60, text: 'Assigning teachers...' },
+            { progress: 80, text: 'Allocating classrooms...' },
+            { progress: 100, text: 'Finalizing timetable...' }
+        ];
+        
+        let currentStep = 0;
+        const interval = setInterval(() => {
+            if (currentStep < steps.length) {
+                const step = steps[currentStep];
+                progressBar.style.width = step.progress + '%';
+                progressText.textContent = step.text;
+                currentStep++;
+            } else {
+                clearInterval(interval);
+            }
+        }, 1000);
+    }
+    
+    function exportTimetable() {
+        // Implement export functionality
+        showToast('Export functionality coming soon!', 'info');
+    }
+    
+    function updateStatistics() {
+        document.getElementById('total-classes').textContent = timetableData.length;
+        document.getElementById('scheduled-classes').textContent = timetableData.length;
+        document.getElementById('conflicts').textContent = '0'; // Calculate conflicts
+        document.getElementById('efficiency').textContent = '95%'; // Calculate efficiency
+    }
+    
+    function showLoading() {
+        loadingState.classList.remove('hidden');
+        timetableContainer.classList.add('hidden');
+        emptyState.classList.add('hidden');
+    }
+    
+    function hideLoading() {
+        loadingState.classList.add('hidden');
+    }
+    
+    function showTimetable() {
+        timetableContainer.classList.remove('hidden');
+        emptyState.classList.add('hidden');
+    }
+    
+    function showEmptyState() {
+        emptyState.classList.remove('hidden');
+        timetableContainer.classList.add('hidden');
+    }
+    
+    function showGenerationModal() {
+        generationModal.classList.remove('hidden');
+    }
+    
+    function hideGenerationModal() {
+        generationModal.classList.add('hidden');
+    }
+    
+    function showToast(message, type = 'info') {
+        const toastMessage = document.getElementById('toast-message');
+        const toastIcon = document.getElementById('toast-icon');
+        
+        toastMessage.textContent = message;
+        
+        // Set icon based on type
+        const icons = {
+            success: '<svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>',
+            error: '<svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>',
+            info: '<svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>'
+        };
+        
+        toastIcon.innerHTML = icons[type] || icons.info;
+        
+        toast.classList.remove('hidden');
+        
+        setTimeout(() => {
+            toast.classList.add('hidden');
+        }, 5000);
+    }
+});
+</script>
+{% endblock %}

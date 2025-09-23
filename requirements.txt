@@ -4,3 +4,4 @@ PyMySQL
 pandas
 python-dotenv
 openpyxl
+requests

@@ -1,7 +1,7 @@
 import io
 import csv
 import random
-from flask import Blueprint, jsonify, request, session, redirect, url_for, render_template, g
+from flask import Blueprint, jsonify, request, session, redirect, url_for, render_template, g, send_file
 from sqlalchemy import exc
 
 from extensions import db
@@ -180,3 +180,34 @@ def bulk_upload_students():
             db.session.rollback()
             return jsonify({"message": f"An error occurred during processing: {e}"}), 500
     return jsonify({"message": "Invalid file type. Please upload a CSV."}), 400
+
+@sections_bp.route('/download_csv_template')
+def download_csv_template():
+    """Download CSV template for bulk student import."""
+    if 'user_id' not in session:
+        return redirect(url_for('main.login'))
+    
+    # Create CSV template
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow(['Full Name', 'Section Name', 'Email (Optional)'])
+    
+    # Write sample data
+    writer.writerow(['John Doe', 'Class 10A', 'john.doe@example.com'])
+    writer.writerow(['Jane Smith', 'Class 10B', 'jane.smith@example.com'])
+    writer.writerow(['Ravi Kumar', 'Class 11A', 'ravi.kumar@example.com'])
+    
+    # Prepare file for download
+    output.seek(0)
+    mem = io.BytesIO()
+    mem.write(output.getvalue().encode('utf-8'))
+    mem.seek(0)
+    
+    return send_file(
+        mem,
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name='student_import_template.csv'
+    )

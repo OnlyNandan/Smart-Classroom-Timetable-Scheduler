@@ -129,7 +129,7 @@
 
             const fetchClassrooms = async () => {
                 try {
-                    const response = await fetch("{{ url_for('handle_classrooms') }}");
+                    const response = await fetch("{{ url_for('classrooms.handle_classrooms') }}");
                     if (!response.ok) throw new Error('Failed to fetch classrooms.');
                     const data = await response.json();
                     classrooms.value = data.classrooms;
@@ -184,7 +184,7 @@
                 isSaving.value = true;
                 modal.error = '';
                 
-                const url = modal.isEdit ? `{{ url_for('handle_classrooms') }}/${modal.data.id}` : "{{ url_for('handle_classrooms') }}";
+                const url = modal.isEdit ? `{{ url_for('classrooms.handle_classrooms') }}/${modal.data.id}` : "{{ url_for('classrooms.handle_classrooms') }}";
                 const method = modal.isEdit ? 'PUT' : 'POST';
 
                 try {
@@ -209,7 +209,7 @@
                 if (!confirm(`Are you sure you want to delete classroom '${classroom.room_id}'?`)) return;
 
                 try {
-                    const response = await fetch(`{{ url_for('handle_classrooms') }}/${classroom.id}`, { method: 'DELETE' });
+                    const response = await fetch(`{{ url_for('classrooms.handle_classrooms') }}/${classroom.id}`, { method: 'DELETE' });
                     const result = await response.json();
                     if (!response.ok) throw new Error(result.message || 'Failed to delete.');
                     
