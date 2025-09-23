@@ -5,317 +5,354 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Setup - Scheduler AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .glass-card {
-            background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .bg-gradient-body {
-            background-color: #020617;
-            background-image: radial-gradient(at 2% 5%, rgb(30, 27, 44) 0px, transparent 50%),
-                              radial-gradient(at 98% 98%, rgb(20, 32, 53) 0px, transparent 50%);
-        }
+        .glass-card { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .bg-gradient-body { background-color: #0c0a09; background-image: radial-gradient(at 2% 5%, rgb(30, 27, 44) 0px, transparent 50%), radial-gradient(at 98% 98%, rgb(20, 32, 53) 0px, transparent 50%); }
         .form-section { display: none; animation: fadeIn 0.5s ease-in-out; }
         .form-section.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .step-indicator { transition: all 0.3s ease-in-out; }
-        .input-base {
-            background-color: rgba(17, 24, 39, 0.5); border: 1px solid #4b5563;
-            color: #d1d5db; padding: 0.5rem 0.75rem; border-radius: 0.5rem; width: 100%;
-            transition: all 0.2s ease;
-        }
-        .input-base:focus {
-            outline: none; ring: 2px; ring-offset: 2px; ring-offset-color: #111827;
-            border-color: #8b5cf6; ring-color: #8b5cf6;
-        }
-        .btn-secondary {
-             background-color: #4b5563; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600;
-             transition: background-color 0.2s ease;
-        }
-        .btn-secondary:hover { background-color: #6b7280; }
-        .btn-remove {
-            background-color: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);
-            padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 500;
-            transition: all 0.2s ease;
-        }
-        .btn-remove:hover { background-color: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.5); }
+        .input-base { background-color: rgba(31, 41, 55, 0.5); border: 1px solid #4b5563; color: #d1d5db; padding: 0.65rem 1rem; border-radius: 0.5rem; width: 100%; transition: all 0.2s ease; }
+        .input-base:focus { outline: none; box-shadow: 0 0 0 2px #111827, 0 0 0 4px #8b5cf6; border-color: #8b5cf6; }
+        .input-base.invalid { border-color: #ef4444; box-shadow: 0 0 0 2px #111827, 0 0 0 4px #ef4444; }
+        .btn { padding: 0.65rem 1.5rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .btn-primary { background-color: #7c3aed; color: white; } .btn-primary:hover { background-color: #8b5cf6; } .btn-primary:disabled { background-color: #585068; color: #a1a1aa; cursor: not-allowed; }
+        .btn-secondary { background-color: #4b5563; color: white; } .btn-secondary:hover { background-color: #6b7280; }
+        .btn-danger { background-color: #be123c; color: white; } .btn-danger:hover { background-color: #e11d48; }
+        .selection-card { border: 2px solid #4b5563; transition: all 0.2s ease; } .selection-card:hover { border-color: #a78bfa; } .selection-card.selected { border-color: #8b5cf6; box-shadow: 0 0 0 2px #8b5cf6; }
+        .summary-item { background-color: rgba(31, 41, 55, 0.3); padding: 1rem; border-radius: 0.5rem; border: 1px solid #4b5563; }
+        .remove-btn { color: #f87171; background-color: rgba(239, 68, 68, 0.1); border-radius: 9999px; padding: 0.25rem; } .remove-btn:hover { color: white; background-color: #ef4444; }
     </style>
 </head>
-<body class="bg-gradient-body text-gray-100 min-h-screen p-4 sm:p-6 lg:p-8 flex items-center justify-center">
-    <div class="w-full max-w-5xl mx-auto p-8 space-y-6 glass-card rounded-2xl shadow-2xl">
-        <h1 class="text-3xl font-bold text-center text-white">Scheduler AI Initial Setup</h1>
-        <div class="flex justify-center space-x-2 sm:space-x-4 p-4 text-sm sm:text-base">
-            <div id="step-1-indicator" class="step-indicator border-b-2 py-2 px-3 sm:px-4">Step 1: Type</div>
-            <div id="step-2-indicator" class="step-indicator border-b-2 py-2 px-3 sm:px-4">Step 2: Details</div>
-            <div id="step-3-indicator" class="step-indicator border-b-2 py-2 px-3 sm:px-4">Step 3: Structure</div>
-            <div id="step-4-indicator" class="step-indicator border-b-2 py-2 px-3 sm:px-4">Step 4: Finalize</div>
-        </div>
-
-        <form method="POST" action="{{ url_for('setup') }}" id="setup-form" class="space-y-8">
-            <!-- Step 1: Institution Type -->
-            <div id="step-1" class="form-section">
-                <h2 class="text-2xl font-semibold mb-4 text-center text-white">Select Institution Type</h2>
-                <div class="flex justify-center gap-6">
-                    <label class="glass-card p-6 rounded-lg cursor-pointer hover:border-purple-500 border border-transparent transition w-64 text-center">
-                        <input type="radio" name="mode" value="school" class="hidden" checked>
-                        <span class="text-5xl">🏫</span>
-                        <h3 class="text-xl font-bold mt-4">School</h3>
-                        <p class="text-gray-400">Grades, Classes, Streams</p>
-                    </label>
-                    <label class="glass-card p-6 rounded-lg cursor-pointer hover:border-purple-500 border border-transparent transition w-64 text-center">
-                        <input type="radio" name="mode" value="college" class="hidden">
-                        <span class="text-5xl">🎓</span>
-                        <h3 class="text-xl font-bold mt-4">College</h3>
-                        <p class="text-gray-400">Semesters, Branches, Courses</p>
-                    </label>
-                </div>
-            </div>
-
-            <!-- Step 2: Basic Details -->
-            <div id="step-2" class="form-section">
-                <h2 class="text-2xl font-semibold mb-6 text-center text-white">Institution Details</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label for="working_days" class="block text-sm font-medium text-gray-300">Working Days Per Week</label>
-                        <select id="working_days" name="working_days" class="input-base mt-1">
-                            <option value="5">Monday – Friday</option>
-                            <option value="6">Monday – Saturday</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="period_duration" class="text-sm font-medium text-gray-300">Default Period Duration (minutes)</label>
-                        <input id="period_duration" name="period_duration" type="number" required value="45" class="input-base mt-1">
-                    </div>
-                    <div>
-                        <label for="start_time" class="text-sm font-medium text-gray-300">School/College Start Time</label>
-                        <input id="start_time" name="start_time" type="time" required value="08:30" class="input-base mt-1">
-                    </div>
-                    <div>
-                        <label for="end_time" class="text-sm font-medium text-gray-300">School/College End Time</label>
-                        <input id="end_time" name="end_time" type="time" required value="15:30" class="input-base mt-1">
-                    </div>
-                </div>
-                <div id="breaks-container" class="mt-8">
-                    <h3 class="text-lg font-medium text-white mb-2">Breaks</h3>
-                    <div id="breaks-list"></div>
-                    <button type="button" id="add-break-btn" class="mt-2 text-sm text-purple-400 hover:underline font-medium">+ Add Break</button>
-                </div>
-            </div>
-
-            <!-- Step 3: Grade/Semester Structure -->
-            <div id="step-3" class="form-section">
-                <h2 id="structure-title" class="text-2xl font-semibold mb-6 text-center text-white">Define School Structure</h2>
-                <div id="structure-container" class="space-y-6"></div>
-                <button type="button" id="add-group-btn" class="mt-4 btn-secondary">+ Add Group</button>
-            </div>
+<body class="bg-gradient-body text-gray-200 min-h-screen p-4 flex items-center justify-center">
+    <div class="w-full max-w-4xl mx-auto">
+        <div id="setup-container" class="p-4 sm:p-8 space-y-6 glass-card rounded-2xl shadow-2xl">
+            <h1 class="text-3xl font-bold text-center text-white">Scheduler AI Initial Setup</h1>
+            <div id="error-banner" class="hidden bg-red-500/20 border border-red-500/30 text-red-300 px-4 py-3 rounded-lg text-center"></div>
             
-            <!-- Step 4: Finalize / Admin Account -->
-            <div id="step-4" class="form-section">
-                 <h2 class="text-2xl font-semibold mb-4 text-center text-white">Create Your Admin Account</h2>
-                 <div class="max-w-md mx-auto">
-                    <div>
-                        <label for="username" class="text-sm font-medium text-gray-300">Admin Username</label>
-                        <input id="username" name="username" type="text" required class="input-base mt-1">
-                    </div>
-                    <div class="mt-4">
-                        <label for="password" class="text-sm font-medium text-gray-300">Admin Password</label>
-                        <input id="password" name="password" type="password" required class="input-base mt-1">
-                    </div>
-                 </div>
+            <div class="flex justify-between items-center w-full px-2">
+                <div class="step-indicator text-center w-1/5" id="step-indicator-1"><div class="font-bold text-purple-400">Type</div></div>
+                <div class="flex-auto border-t-2 transition duration-500 ease-in-out border-gray-600"></div>
+                <div class="step-indicator text-center w-1/5" id="step-indicator-2"><div class="font-semibold text-gray-500">Details</div></div>
+                <div class="flex-auto border-t-2 transition duration-500 ease-in-out border-gray-600"></div>
+                <div class="step-indicator text-center w-1/5" id="step-indicator-3"><div class="font-semibold text-gray-500">Structure</div></div>
+                <div class="flex-auto border-t-2 transition duration-500 ease-in-out border-gray-600"></div>
+                <div class="step-indicator text-center w-1/5" id="step-indicator-4"><div class="font-semibold text-gray-500">Summary</div></div>
+                <div class="flex-auto border-t-2 transition duration-500 ease-in-out border-gray-600"></div>
+                <div class="step-indicator text-center w-1/5" id="step-indicator-5"><div class="font-semibold text-gray-500">Finalize</div></div>
             </div>
 
-            <!-- Navigation Buttons -->
-            <div class="flex justify-between pt-5">
-                <button type="button" id="prev-btn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg transition hidden">Back</button>
-                <button type="button" id="next-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg transition">Next</button>
-                <button type="submit" id="submit-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition hidden">Complete Setup</button>
+            <form id="setup-form" class="space-y-8 min-h-[450px]">
+                <!-- Step 1: Institution Type -->
+                <div id="step-1" class="form-section">
+                    <h2 class="text-2xl font-semibold mb-6 text-center text-white">Select Institution Type</h2>
+                    <div class="flex flex-col sm:flex-row justify-center gap-6">
+                        <div id="school-card" class="selection-card p-6 rounded-lg cursor-pointer w-full sm:w-64 text-center selected" onclick="selectMode('school')"><input type="radio" name="mode" value="school" class="hidden" checked><span class="text-6xl">🏫</span><h3 class="text-xl font-bold mt-4">School</h3><p class="text-gray-400">Grades, Classes, Streams</p></div>
+                        <div id="college-card" class="selection-card p-6 rounded-lg cursor-pointer w-full sm:w-64 text-center" onclick="selectMode('college')"><input type="radio" name="mode" value="college" class="hidden"><span class="text-6xl">🎓</span><h3 class="text-xl font-bold mt-4">College</h3><p class="text-gray-400">Semesters, Departments, Courses</p></div>
+                    </div>
+                </div>
+                <!-- Step 2: Basic Details -->
+                <div id="step-2" class="form-section">
+                     <h2 class="text-2xl font-semibold mb-6 text-center text-white">Institution Details</h2>
+                     <div class="space-y-6">
+                         <div><label for="institute_name" class="block text-sm font-medium text-gray-300 mb-1">Institution Name</label><input type="text" id="institute_name" name="institute_name" class="input-base" placeholder="e.g., Quantum High School" required></div>
+                         <div class="border-t border-gray-700 pt-6">
+                             <div class="flex justify-between items-center mb-4"><h3 class="text-lg font-semibold">Time Structure</h3><button type="button" class="btn btn-secondary text-sm" onclick="applyPreset()">Load Preset</button></div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div><label for="working_days" class="block text-sm font-medium text-gray-300 mb-1">Working Days</label><select id="working_days" name="working_days" class="input-base" required><option>Monday - Friday</option><option>Monday - Saturday</option></select></div>
+                                <div><label for="start_time" class="block text-sm font-medium text-gray-300 mb-1">Start Time</label><input type="time" id="start_time" name="start_time" class="input-base" required></div>
+                                <div><label for="end_time" class="block text-sm font-medium text-gray-300 mb-1">End Time</label><input type="time" id="end_time" name="end_time" class="input-base" required></div>
+                                <div><label for="period_duration" class="block text-sm font-medium text-gray-300 mb-1">Period (min)</label><input type="number" id="period_duration" name="period_duration" class="input-base" value="45" required></div>
+                            </div>
+                         </div>
+                         <div class="border-t border-gray-700 pt-6">
+                             <div class="flex justify-between items-center mb-4"><h3 class="text-lg font-semibold">Breaks</h3><button type="button" class="btn btn-secondary text-sm" onclick="addBreak()">+ Add Break</button></div>
+                             <div id="breaks-container" class="space-y-3"></div>
+                         </div>
+                     </div>
+                </div>
+                <!-- Step 3: Structure -->
+                <div id="step-3" class="form-section">
+                    <div class="flex justify-between items-center mb-6"><h2 id="structure-title" class="text-2xl font-semibold text-white">Academic Structure</h2><button id="add-group-btn" type="button" class="btn btn-secondary" onclick="addStructureGroup()">+ Add Group</button></div>
+                    <div id="structure-container" class="space-y-6 max-h-[400px] overflow-y-auto pr-2"></div>
+                </div>
+                <!-- Step 4: Summary -->
+                <div id="step-4" class="form-section">
+                    <h2 class="text-2xl font-semibold mb-6 text-center text-white">Confirm Details</h2>
+                    <div id="summary-container" class="space-y-6 max-h-[400px] overflow-y-auto p-2"></div>
+                </div>
+                <!-- Step 5: Admin Account -->
+                <div id="step-5" class="form-section">
+                    <h2 class="text-2xl font-semibold mb-6 text-center text-white">Create Admin Account</h2>
+                     <div class="w-full max-w-sm mx-auto space-y-4">
+                        <div><label for="username" class="block text-sm font-medium text-gray-300 mb-1">Admin Username</label><input type="text" id="username" name="username" class="input-base" required></div>
+                        <div><label for="password" class="block text-sm font-medium text-gray-300 mb-1">Password</label><input type="password" id="password" name="password" class="input-base" required></div>
+                     </div>
+                </div>
+            </form>
+
+            <div class="flex justify-between pt-5 border-t border-gray-700 mt-8">
+                <button type="button" id="prev-btn" class="btn btn-secondary hidden">Back</button>
+                <button type="button" id="next-btn" class="btn btn-primary ml-auto">Next</button>
+                <button type="button" id="submit-btn" class="btn btn-primary hidden ml-auto">Confirm & Finish</button>
             </div>
-        </form>
-    </div>
-
-<template id="break-template">
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-3 items-end break-item">
-        <div>
-            <label class="text-sm font-medium text-gray-300">Break Name</label>
-            <input name="break_names" type="text" placeholder="e.g., Lunch" required class="input-base mt-1">
-        </div>
-        <div>
-            <label class="text-sm font-medium text-gray-300">Start Time</label>
-            <input name="break_starts" type="time" required class="input-base mt-1">
-        </div>
-        <div>
-            <label class="text-sm font-medium text-gray-300">End Time</label>
-            <input name="break_ends" type="time" required class="input-base mt-1">
-        </div>
-        <button type="button" class="btn-remove remove-btn">Remove</button>
-    </div>
-</template>
-
-<template id="group-template">
-    <div class="glass-card p-4 rounded-lg group-item">
-        <input type="hidden" name="group_indices">
-        <div class="flex justify-between items-center">
-            <input name="group_names" placeholder="Group Name (e.g., Primary School)" required class="input-base text-lg font-bold w-1/2">
-            <button type="button" class="btn-remove remove-btn">Remove Group</button>
-        </div>
-        <div class="pl-4 mt-4 space-y-2 grades-container"></div>
-        <button type="button" class="add-grade-btn mt-2 ml-4 text-sm text-purple-400 hover:underline font-medium">+ Add Grade</button>
-        <div class="streams-section mt-4 pl-4 hidden">
-             <h4 class="text-md font-semibold text-gray-300">Streams</h4>
-             <div class="streams-container mt-2 space-y-2"></div>
-             <button type="button" class="add-stream-btn mt-2 text-sm text-purple-400 hover:underline font-medium">+ Add Stream</button>
         </div>
     </div>
-</template>
 
-<template id="grade-template">
-     <div class="flex items-center gap-4 grade-item">
-        <input name="grade_names" placeholder="Grade Name (e.g., Grade 1)" required class="input-base w-1/3">
-        <div class="flex items-center gap-2">
-            <label class="text-sm">Early Dismissal?</label>
-            <input type="checkbox" class="early-dismissal-toggle h-4 w-4 rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-600">
-            <input name="grade_end_times" type="time" class="input-base hidden w-32">
-        </div>
-        <button type="button" class="btn-remove remove-btn text-xs">X</button>
-    </div>
-</template>
-
-<template id="stream-template">
-    <div class="glass-card p-3 rounded-md stream-item">
-        <input type="hidden" name="stream_indices">
-        <div class="flex justify-between items-center">
-            <input name="stream_names" placeholder="Stream Name (e.g., Science)" required class="input-base font-semibold w-1/2">
-            <button type="button" class="btn-remove remove-btn">X</button>
-        </div>
-        <div class="subjects-container mt-3 pl-4 space-y-2"></div>
-        <button type="button" class="add-subject-btn mt-2 ml-4 text-sm text-purple-400 hover:underline font-medium">+ Add Subject</button>
-    </div>
-</template>
-
-<template id="subject-template">
-    <div class="flex items-center gap-2 subject-item">
-        <input name="subject_codes" placeholder="Code" class="input-base w-24">
-        <input name="subject_names" placeholder="Subject Name" required class="input-base flex-grow">
-        <input name="subject_hours" type="number" placeholder="Hrs/Wk" required class="input-base w-24">
-        <label class="text-sm flex items-center gap-1"><input name="subject_is_elective" type="checkbox" class="h-4 w-4 rounded bg-gray-700 text-purple-600"> Elective</label>
-        <button type="button" class="btn-remove remove-btn text-xs">X</button>
-    </div>
-</template>
-
+<template id="remove-btn-template"><button type="button" class="remove-btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button></template>
+<template id="break-template"><div class="break-item flex items-center gap-4 p-2 rounded-md bg-gray-800"><input type="text" name="break_names" class="input-base" placeholder="e.g., Lunch Break" required><input type="time" name="break_starts" class="input-base" required><input type="time" name="break_ends" class="input-base" required></div></template>
+<!-- School Templates -->
+<template id="school-group-template"><div class="group-item glass-card p-4 rounded-lg"><div class="flex justify-between items-center mb-4"><input type="text" class="input-base w-1/2" placeholder="Group Name (e.g., Primary School)" required></div><div class="pl-4 border-l-2 border-gray-700 space-y-4"><div class="grades-container space-y-2"></div><button type="button" class="btn btn-secondary text-xs" onclick="addSchoolGrade(this)">+ Add Grade</button><div class="streams-container space-y-3 mt-3"></div><button type="button" class="btn btn-secondary text-xs" onclick="addSchoolStream(this)">+ Add Stream</button></div></div></template>
+<template id="school-grade-template"><div class="grade-item flex items-center gap-2"><input type="text" class="input-base" placeholder="Grade Name (e.g., Grade 1)" required></div></template>
+<template id="school-stream-template"><div class="stream-item bg-gray-800/50 p-3 rounded-md"><div class="flex justify-between items-center mb-3"><input type="text" class="input-base w-1/2" placeholder="Stream Name (e.g., Science)" required></div><div class="subjects-container space-y-2"></div><button type="button" class="btn btn-secondary text-xs" onclick="addSchoolSubject(this)">+ Add Subject</button></div></template>
+<template id="school-subject-template"><div class="subject-item grid grid-cols-12 gap-2 items-center"><input type="text" class="input-base col-span-2" placeholder="Code" required><input type="text" class="input-base col-span-5" placeholder="Subject Name" required><input type="number" class="input-base col-span-2" placeholder="Hrs/Wk" required><label class="flex items-center justify-center gap-1 col-span-2 text-sm"><input type="checkbox" class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-600">Elective</label></div></template>
+<!-- College Templates -->
+<template id="college-semester-template"><div class="semester-item glass-card p-4 rounded-lg"><div class="flex justify-between items-center mb-4"><input type="text" class="input-base w-1/2" placeholder="Semester Name (e.g., Semester 1)" required></div><div class="pl-4 border-l-2 border-gray-700 space-y-4"><div class="departments-container space-y-3"></div><button type="button" class="btn btn-secondary text-xs" onclick="addCollegeDepartment(this)">+ Add Department</button></div></div></template>
+<template id="college-department-template"><div class="department-item bg-gray-800/50 p-3 rounded-md"><div class="flex justify-between items-center mb-3"><input type="text" class="input-base w-1/2" placeholder="Department (e.g., Computer Science)" required></div><div class="courses-container space-y-2"></div><button type="button" class="btn btn-secondary text-xs" onclick="addCollegeCourse(this)">+ Add Course</button></div></template>
+<template id="college-course-template"><div class="course-item grid grid-cols-12 gap-2 items-center"><input type="text" class="input-base col-span-2" placeholder="Code" required><input type="text" class="input-base col-span-5" placeholder="Course Name" required><input type="number" class="input-base col-span-2" placeholder="Credits" required><select class="input-base col-span-2"><option>Core</option><option>Elective</option><option>Lab</option></select></div></template>
 
 <script>
-// --- WIZARD NAVIGATION ---
-const steps = ['step-1', 'step-2', 'step-3', 'step-4'];
-let currentStep = 0;
-const nextBtn = document.getElementById('next-btn');
-const prevBtn = document.getElementById('prev-btn');
-const submitBtn = document.getElementById('submit-btn');
+let currentStep = 1;
+const totalSteps = 5;
 
-function updateStepVisibility() {
-    steps.forEach((stepId, index) => {
-        const section = document.getElementById(stepId);
-        const indicator = document.getElementById(`${stepId}-indicator`);
-        if (index === currentStep) {
-            section.classList.add('active');
-            indicator.classList.remove('border-gray-600', 'text-gray-500');
-            indicator.classList.add('border-purple-500', 'text-purple-400');
-        } else {
-            section.classList.remove('active');
-            indicator.classList.add('border-gray-600', 'text-gray-500');
-            indicator.classList.remove('border-purple-500', 'text-purple-400');
+// --- Helper Functions ---
+function appendRemoveButton(element) {
+    const btnTemplate = document.getElementById('remove-btn-template').content.cloneNode(true);
+    const button = btnTemplate.querySelector('button');
+    button.onclick = () => element.remove();
+    element.appendChild(button);
+}
+
+// --- Main UI and Navigation Logic ---
+function validateStep(step) {
+    const section = document.getElementById(`step-${step}`);
+    const inputs = section.querySelectorAll('input[required], select[required]');
+    let allValid = true;
+    inputs.forEach(input => {
+        input.classList.remove('invalid');
+        if (!input.value) {
+            input.classList.add('invalid');
+            allValid = false;
         }
     });
-    prevBtn.classList.toggle('hidden', currentStep === 0);
-    nextBtn.classList.toggle('hidden', currentStep === steps.length - 1);
-    submitBtn.classList.toggle('hidden', currentStep !== steps.length - 1);
+    return allValid;
 }
-nextBtn.addEventListener('click', () => { if (currentStep < steps.length - 1) { currentStep++; updateStepVisibility(); } });
-prevBtn.addEventListener('click', () => { if (currentStep > 0) { currentStep--; updateStepVisibility(); } });
+function goToStep(step) {
+    document.querySelectorAll('.form-section').forEach(el => el.classList.remove('active'));
+    document.getElementById(`step-${step}`).classList.add('active');
+    currentStep = step;
+    for (let i = 1; i <= totalSteps; i++) {
+        const indicator = document.getElementById(`step-indicator-${i}`);
+        const textDiv = indicator.querySelector('div');
+        const line = indicator.previousElementSibling;
+        if (i < step) { textDiv.className = 'font-bold text-purple-400'; if(line) line.className = 'flex-auto border-t-2 transition duration-500 ease-in-out border-purple-400'; } 
+        else if (i === step) { textDiv.className = 'font-bold text-purple-400'; if(line) line.className = 'flex-auto border-t-2 transition duration-500 ease-in-out border-gray-600'; } 
+        else { textDiv.className = 'font-semibold text-gray-500'; if(line) line.className = 'flex-auto border-t-2 transition duration-500 ease-in-out border-gray-600'; }
+    }
+    document.getElementById('prev-btn').classList.toggle('hidden', step === 1);
+    document.getElementById('next-btn').classList.toggle('hidden', step === totalSteps);
+    document.getElementById('submit-btn').classList.toggle('hidden', step !== totalSteps);
+    if (step === 4) generateSummary();
+}
+document.getElementById('next-btn').addEventListener('click', () => { 
+    if (validateStep(currentStep) && currentStep < totalSteps) {
+         goToStep(currentStep + 1); 
+    }
+});
+document.getElementById('prev-btn').addEventListener('click', () => { if (currentStep > 1) goToStep(currentStep - 1); });
+function selectMode(mode) {
+    document.querySelector('input[name="mode"][value="school"]').checked = (mode === 'school');
+    document.querySelector('input[name="mode"][value="college"]').checked = (mode === 'college');
+    document.getElementById('school-card').classList.toggle('selected', mode === 'school');
+    document.getElementById('college-card').classList.toggle('selected', mode === 'college');
+    updateStructureUI(mode);
+}
+function updateStructureUI(mode) {
+    const title = document.getElementById('structure-title');
+    const addBtn = document.getElementById('add-group-btn');
+    document.getElementById('structure-container').innerHTML = '';
+    if (mode === 'school') {
+        title.textContent = 'School Academic Structure';
+        addBtn.textContent = '+ Add Group';
+    } else {
+        title.textContent = 'College Academic Structure';
+        addBtn.textContent = '+ Add Semester';
+    }
+}
 
-// --- DYNAMIC FORM LOGIC ---
-let groupCounter = 0;
-let streamCounter = 0;
+// --- Dynamic Element Creation ---
+function applyPreset() {
+    const mode = document.querySelector('input[name="mode"]:checked').value;
+    const breaksContainer = document.getElementById('breaks-container');
+    breaksContainer.innerHTML = '';
+    if (mode === 'school') {
+        document.getElementById('start_time').value = '08:30';
+        document.getElementById('end_time').value = '15:30';
+        document.getElementById('period_duration').value = '45';
+        addBreak('Short Break', '10:30', '10:45');
+        addBreak('Lunch Break', '12:00', '13:00');
+    } else {
+        document.getElementById('start_time').value = '09:00';
+        document.getElementById('end_time').value = '17:00';
+        document.getElementById('period_duration').value = '50';
+        addBreak('Lunch Break', '13:00', '14:00');
+    }
+}
+function addBreak(name='', start='', end='') {
+    const container = document.getElementById('breaks-container');
+    const div = document.getElementById('break-template').content.cloneNode(true).querySelector('div');
+    if(name) div.querySelector('[name="break_names"]').value = name;
+    if(start) div.querySelector('[name="break_starts"]').value = start;
+    if(end) div.querySelector('[name="break_ends"]').value = end;
+    appendRemoveButton(div);
+    container.appendChild(div);
+}
+function addStructureGroup() {
+    const mode = document.querySelector('input[name="mode"]:checked').value;
+    const templateId = mode === 'school' ? 'school-group-template' : 'college-semester-template';
+    const div = document.getElementById(templateId).content.cloneNode(true).querySelector('div');
+    appendRemoveButton(div.querySelector('.flex'));
+    document.getElementById('structure-container').appendChild(div);
+}
+function addSchoolGrade(button) {
+    const container = button.closest('.group-item').querySelector('.grades-container');
+    const div = document.getElementById('school-grade-template').content.cloneNode(true).querySelector('div');
+    appendRemoveButton(div);
+    container.appendChild(div);
+}
+function addSchoolStream(button) {
+    const container = button.closest('.group-item').querySelector('.streams-container');
+    const div = document.getElementById('school-stream-template').content.cloneNode(true).querySelector('div');
+    appendRemoveButton(div.querySelector('.flex'));
+    container.appendChild(div);
+}
+function addSchoolSubject(button) {
+    const container = button.closest('.stream-item').querySelector('.subjects-container');
+    const div = document.getElementById('school-subject-template').content.cloneNode(true).querySelector('div');
+    appendRemoveButton(div);
+    container.appendChild(div);
+}
+function addCollegeDepartment(button) {
+    const container = button.closest('.semester-item').querySelector('.departments-container');
+    const div = document.getElementById('college-department-template').content.cloneNode(true).querySelector('div');
+    appendRemoveButton(div.querySelector('.flex'));
+    container.appendChild(div);
+}
+function addCollegeCourse(button) {
+    const container = button.closest('.department-item').querySelector('.courses-container');
+    const div = document.getElementById('college-course-template').content.cloneNode(true).querySelector('div');
+    appendRemoveButton(div);
+    container.appendChild(div);
+}
 
-document.getElementById('setup-form').addEventListener('click', (e) => {
-    if (e.target.classList.contains('remove-btn')) {
-        e.target.closest('.break-item, .group-item, .grade-item, .stream-item, .subject-item').remove();
+// --- Summary and Submission Logic ---
+function getFormDataAsJSON() {
+    const form = document.getElementById('setup-form');
+    const mode = form.querySelector('[name="mode"]:checked').value;
+    const data = {
+        mode: mode,
+        details: { institute_name: form.querySelector('#institute_name').value, working_days: form.querySelector('#working_days').value, start_time: form.querySelector('#start_time').value, end_time: form.querySelector('#end_time').value, period_duration: form.querySelector('#period_duration').value, breaks: Array.from(form.querySelectorAll('.break-item')).map(b => ({ name: b.querySelector('[name="break_names"]').value, start: b.querySelector('[name="break_starts"]').value, end: b.querySelector('[name="break_ends"]').value })) },
+        structure: [],
+        admin: { username: form.querySelector('#username').value, password: form.querySelector('#password').value }
+    };
+
+    if (mode === 'school') {
+        form.querySelectorAll('.group-item').forEach(groupEl => {
+            const groupData = {
+                name: groupEl.querySelector('input').value,
+                grades: Array.from(groupEl.querySelectorAll('.grade-item')).map(g => ({ name: g.querySelector('input').value })),
+                streams: []
+            };
+            groupEl.querySelectorAll('.stream-item').forEach(streamEl => {
+                const streamData = {
+                    name: streamEl.querySelector('input').value,
+                    subjects: Array.from(streamEl.querySelectorAll('.subject-item')).map(s => ({ code: s.children[0].value, name: s.children[1].value, hours: s.children[2].value, is_elective: s.children[3].querySelector('input').checked }))
+                };
+                groupData.streams.push(streamData);
+            });
+            data.structure.push(groupData);
+        });
+    } else { // College
+        form.querySelectorAll('.semester-item').forEach(semEl => {
+            const semData = {
+                name: semEl.querySelector('input').value,
+                departments: []
+            };
+            semEl.querySelectorAll('.department-item').forEach(deptEl => {
+                const deptData = {
+                    name: deptEl.querySelector('input').value,
+                    courses: Array.from(deptEl.querySelectorAll('.course-item')).map(c => ({ code: c.children[0].value, name: c.children[1].value, credits: c.children[2].value, type: c.children[3].value }))
+                };
+                semData.departments.push(deptData);
+            });
+            data.structure.push(semData);
+        });
+    }
+    return data;
+}
+
+function generateSummary() {
+    const data = getFormDataAsJSON();
+    const summaryContainer = document.getElementById('summary-container');
+    let html = `<div class="summary-item"><h3 class="text-lg font-bold text-purple-400 mb-2">Branding & Schedule</h3><p><strong>Name:</strong> ${data.details.institute_name}</p><p><strong>Type:</strong> ${data.mode}</p><p><strong>Working Days:</strong> ${data.details.working_days} (${data.details.start_time} - ${data.details.end_time})</p></div>`;
+    html += `<div class="summary-item"><h3 class="text-lg font-bold text-purple-400 mb-2">Breaks</h3><ul>${data.details.breaks.map(b => `<li>${b.name} (${b.start} - ${b.end})</li>`).join('') || '<li>No breaks defined</li>'}</ul></div>`;
+
+    if (data.mode === 'school') {
+        data.structure.forEach(group => {
+            html += `<div class="summary-item"><h3 class="text-lg font-bold text-purple-400 mb-2">${group.name}</h3>`;
+            if (group.grades.length > 0) html += `<p><strong>Grades:</strong> ${group.grades.map(g => g.name).join(', ')}</p>`;
+            group.streams.forEach(stream => { html += `<div class="pl-4 mt-2"><h4 class="font-semibold">${stream.name}</h4><ul>${stream.subjects.map(s => `<li>${s.name} (${s.code})${s.is_elective ? ' <i>(Elective)</i>' : ''}</li>`).join('')}</ul></div>`; });
+            html += `</div>`;
+        });
+    } else { // College
+        data.structure.forEach(sem => {
+            html += `<div class="summary-item"><h3 class="text-lg font-bold text-purple-400 mb-2">${sem.name}</h3>`;
+            sem.departments.forEach(dept => { html += `<div class="pl-4 mt-2"><h4 class="font-semibold">${dept.name}</h4><ul>${dept.courses.map(c => `<li>${c.name} (${c.code}) - ${c.type}</li>`).join('')}</ul></div>`; });
+            html += `</div>`;
+        });
+    }
+    summaryContainer.innerHTML = html;
+}
+
+document.getElementById('submit-btn').addEventListener('click', async function(e) {
+    e.preventDefault();
+    if (!validateStep(currentStep)) return;
+    const submitBtn = this;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Processing...`;
+    
+    const payload = getFormDataAsJSON();
+    const formData = new FormData();
+    formData.append('payload', JSON.stringify(payload));
+
+    try {
+        const response = await fetch("{{ url_for('setup') }}", { method: 'POST', body: formData });
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            window.location.href = result.redirect;
+        } else {
+            document.getElementById('error-banner').textContent = `Error: ${result.message}`;
+            document.getElementById('error-banner').classList.remove('hidden');
+        }
+    } catch (error) {
+        document.getElementById('error-banner').textContent = 'A network error occurred. Please try again.';
+        document.getElementById('error-banner').classList.remove('hidden');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Confirm & Finish';
     }
 });
 
-const breaksList = document.getElementById('breaks-list');
-const breakTemplate = document.getElementById('break-template');
-document.getElementById('add-break-btn').addEventListener('click', () => {
-    breaksList.appendChild(breakTemplate.content.cloneNode(true));
+// --- Initial State ---
+document.addEventListener('DOMContentLoaded', () => {
+    goToStep(1);
+    addBreak('Lunch Break', '12:00', '13:00');
+    selectMode('school');
 });
-
-const structureContainer = document.getElementById('structure-container');
-document.getElementById('add-group-btn').addEventListener('click', () => {
-    const clone = document.getElementById('group-template').content.cloneNode(true);
-    const groupItem = clone.querySelector('.group-item');
-    groupItem.querySelector('[name="group_indices"]').value = groupCounter;
-    
-    // Check mode and show streams section if applicable (e.g. for High School)
-    // This can be made more dynamic based on group name
-    const groupNameInput = groupItem.querySelector('[name="group_names"]');
-    groupNameInput.addEventListener('input', (e) => {
-        const isHighSchool = e.target.value.toLowerCase().includes('high');
-        groupItem.querySelector('.streams-section').classList.toggle('hidden', !isHighSchool);
-    });
-
-    clone.querySelector('.add-grade-btn').addEventListener('click', () => addGrade(groupItem, groupCounter));
-    clone.querySelector('.add-stream-btn').addEventListener('click', () => addStream(groupItem, groupCounter));
-    structureContainer.appendChild(clone);
-    groupCounter++;
-});
-
-function addGrade(groupItem, groupIndex) {
-    const container = groupItem.querySelector('.grades-container');
-    const clone = document.getElementById('grade-template').content.cloneNode(true);
-    clone.querySelector('[name="grade_names"]').name = `group_${groupIndex}_grade_names`;
-    const endTimeInput = clone.querySelector('[name="grade_end_times"]');
-    endTimeInput.name = `group_${groupIndex}_grade_end_times`;
-    clone.querySelector('.early-dismissal-toggle').addEventListener('change', (e) => {
-        endTimeInput.classList.toggle('hidden', !e.target.checked);
-    });
-    container.appendChild(clone);
-}
-
-function addStream(groupItem, groupIndex) {
-    const container = groupItem.querySelector('.streams-container');
-    const clone = document.getElementById('stream-template').content.cloneNode(true);
-    const streamItem = clone.querySelector('.stream-item');
-    
-    // Create a unique index for the stream within its group
-    const streamIndex = `g${groupIndex}s${streamCounter}`;
-    streamItem.querySelector('[name="stream_indices"]').value = streamIndex;
-    streamItem.querySelector('[name="stream_names"]').name = `group_${groupIndex}_stream_names`;
-    
-    clone.querySelector('.add-subject-btn').addEventListener('click', () => addSubject(streamItem, streamIndex));
-    
-    container.appendChild(clone);
-    streamCounter++;
-}
-
-function addSubject(streamItem, streamIndex) {
-    const container = streamItem.querySelector('.subjects-container');
-    const clone = document.getElementById('subject-template').content.cloneNode(true);
-    
-    // Mangle names to be parsable on the backend
-    clone.querySelector('[name="subject_codes"]').name = `stream_${streamIndex}_subject_codes`;
-    clone.querySelector('[name="subject_names"]').name = `stream_${streamIndex}_subject_names`;
-    clone.querySelector('[name="subject_hours"]').name = `stream_${streamIndex}_subject_hours`;
-    clone.querySelector('[name="subject_is_elective"]').name = `stream_${streamIndex}_subject_is_elective`;
-    clone.querySelector('[name="subject_is_elective"]').value = streamIndex; // Pass stream index
-
-    container.appendChild(clone);
-}
-
-
-updateStepVisibility();
-// Add a default break on page load
-breaksList.appendChild(breakTemplate.content.cloneNode(true));
 </script>
+
 </body>
 </html>
-

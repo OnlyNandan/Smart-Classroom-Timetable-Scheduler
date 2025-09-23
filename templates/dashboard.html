@@ -1,71 +1,130 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard{% endblock %}
-{% block header %}Dashboard Overview{% endblock %}
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block header %}
+    <div class="flex-grow">
+        <h2 class="text-2xl font-bold text-white">Admin Dashboard</h2>
+        <p class="text-sm text-gray-400">Manage your institution’s scheduling with AI-powered intelligence.</p>
+    </div>
+{% endblock %}
+
 
 {% block content %}
-<div class="container mx-auto">
-    <!-- Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-        {% set level_name = 'Total Grades' if app_mode == 'school' else 'Total Semesters' %}
-        {% set section_name = 'Student Sections' if app_mode == 'school' else 'Total Branches' %}
+<div class="space-y-8">
+     <!-- Header Actions -->
+    <div class="flex items-center justify-end gap-x-2">
+        <button class="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm inline-flex items-center gap-x-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Import Data
+        </button>
+        <button id="generate-btn" class="bg-violet-600 hover:bg-violet-500 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm inline-flex items-center gap-x-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            Generate Timetable
+        </button>
+    </div>
+    
+    <!-- At a Glance -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {% set cards = [
-            (level_name, total_levels, 'bg-purple-500'),
-            ('Total Courses', total_courses, 'bg-blue-500'),
-            ('Total Teachers', total_teachers, 'bg-green-500'),
-            ('Total Classrooms', total_classrooms, 'bg-yellow-500'),
-            (section_name, total_sections, 'bg-red-500')
+            ('Total Students', stats.total_students, stats.students_growth, 'bg-blue-500/10 text-blue-400', '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'),
+            ('Active Teachers', stats.teachers, stats.teachers_growth, 'bg-yellow-500/10 text-yellow-400', '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'),
+            ('Classes Scheduled', stats.classes_scheduled, stats.scheduled_growth, 'bg-green-500/10 text-green-400', '<rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>'),
+            ('Subjects Active', stats.subjects, stats.subjects_growth, 'bg-orange-500/10 text-orange-400', '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>')
         ] %}
-        {% for title, value, color in cards %}
-        <div class="glass-card p-6 rounded-2xl shadow-lg">
-            <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300">{{ title }}</h3>
-            <p class="text-4xl font-bold text-gray-800 dark:text-white mt-2">{{ value }}</p>
-            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-4">
-                <div class="{{ color }} h-1.5 rounded-full" style="width: {{ (value % 10) * 10 + 10 }}%"></div>
+        {% for title, value, change, color, svg in cards %}
+        <div class="glass-card p-6 rounded-2xl">
+            <div class="flex justify-between items-start">
+                <div class="space-y-1">
+                    <p class="text-sm text-gray-400">{{ title }}</p>
+                    <p class="text-3xl font-bold text-white">{{ "{:,.0f}".format(value) }}</p>
+                    <div class="text-xs font-semibold {{ 'text-green-400' if change >= 0 else 'text-red-400' }}">
+                        {{ '+' if change >= 0 else '' }}{{ change }}%
+                    </div>
+                </div>
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center {{ color }}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">{{ svg|safe }}</svg>
+                </div>
             </div>
         </div>
         {% endfor %}
     </div>
 
-    <!-- Actions -->
-    <div class="glass-card p-6 rounded-2xl shadow-lg">
-        <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Timetable Generation</h3>
-        <p class="text-gray-600 dark:text-gray-400 mb-4">Click the button to generate an optimized, conflict-free timetable using the Genetic Algorithm. This process may take a minute.</p>
-        <button id="generate-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 shadow-md">
-            Generate New Timetable
-        </button>
-        <p id="generation-status" class="mt-4 text-gray-600 dark:text-gray-400 font-medium"></p>
+    <!-- Main Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Quick Actions -->
+        <div class="lg:col-span-2 glass-card p-6 rounded-2xl">
+            <h3 class="text-xl font-semibold mb-4 text-white flex items-center gap-x-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m13 2-3 3 3 3 3-3Z"/><path d="m2 13 3 3-3 3-3-3Z"/><path d="m13 22-3-3 3-3 3 3Z"/><path d="m22 13-3-3 3-3 3 3Z"/></svg>
+                Quick Actions
+            </h3>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {% set actions = [
+                    ('Schedule Exams', '#', '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m10.5 14-2 2 2 2"/>'),
+                    ('Manage Teachers', url_for('manage_staff'), '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'),
+                    ('Add Subjects', url_for('manage_subjects'), '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>'),
+                    ('View Analytics', url_for('analytics'), '<path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>'),
+                    ('System Settings', '#', '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>'),
+                    ('Bulk Import', '#', '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>')
+                ] %}
+                {% for label, url, svg in actions %}
+                <a href="{{ url }}" class="bg-gray-800/50 hover:bg-gray-700/80 p-4 rounded-lg flex flex-col items-center justify-center text-center transition-colors">
+                    <div class="w-10 h-10 rounded-full bg-gray-700/50 flex items-center justify-center mb-2">
+                         <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">{{ svg|safe }}</svg>
+                    </div>
+                    <span class="text-sm font-semibold text-gray-300">{{ label }}</span>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        <!-- Recent Activity -->
+        <div class="lg:col-span-1 glass-card p-6 rounded-2xl">
+            <h3 class="text-xl font-semibold mb-4 text-white flex items-center gap-x-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                Recent Activity
+            </h3>
+            <div class="space-y-4">
+                {% for activity in activities %}
+                <div class="flex items-start gap-x-3">
+                    <div class="w-5 h-5 flex-shrink-0 mt-1 {{ 'text-green-400' if activity.level == 'info' else 'text-yellow-400' if activity.level == 'warning' else 'text-red-400' }}">
+                        {% if activity.level == 'info' %}<svg class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+                        {% elif activity.level == 'warning' %}<svg class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+                        {% else %}<svg class="w-full h-full" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>{% endif %}
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-200">{{ activity.message }}</p>
+                        <p class="text-xs text-gray-500">{{ activity.time_ago }}</p>
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-sm text-gray-500">No recent activity.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+     <!-- System Performance -->
+    <div class="glass-card p-6 rounded-2xl">
+        <h3 class="text-xl font-semibold mb-4 text-white flex items-center gap-x-2">
+             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            System Performance Overview
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+            {% set performance_data = [
+                ('Schedule Accuracy', performance.accuracy ~ '%', 'bg-green-500'),
+                ('Avg Generation Time', performance.gen_time ~ 's', 'bg-blue-500'),
+                ('System Uptime', performance.uptime ~ '%', 'bg-yellow-500')
+            ] %}
+            {% for title, value, color in performance_data %}
+            <div>
+                <p class="text-sm text-gray-400">{{ title }}</p>
+                <p class="text-3xl font-bold text-white mt-1">{{ value }}</p>
+                <div class="w-full bg-gray-700 rounded-full h-1.5 mt-2">
+                    <div class="{{ color }} h-1.5 rounded-full" style="width: {{ value|replace('%','')|replace('s','')|float * 0.95 }}%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
     </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-document.getElementById('generate-btn').addEventListener('click', function() {
-    const statusEl = document.getElementById('generation-status');
-    const btn = this;
-    statusEl.textContent = '🧠 Initiating timetable generation... Please wait.';
-    btn.disabled = true;
-    btn.classList.add('opacity-50', 'cursor-not-allowed');
-    
-    fetch("{{ url_for('generate_timetable') }}", { method: 'POST' })
-    .then(response => response.json())
-    .then(data => {
-        if(data.message) {
-             statusEl.textContent = `✅ Success: ${data.message}`;
-        } else {
-            statusEl.textContent = `❌ Error: ${data.error || 'Unknown error occurred'}`;
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        statusEl.textContent = '❌ An unexpected error occurred while contacting the server.';
-    })
-    .finally(() => {
-        btn.disabled = false;
-        btn.classList.remove('opacity-50', 'cursor-not-allowed');
-    });
-});
-</script>
 {% endblock %}
 
