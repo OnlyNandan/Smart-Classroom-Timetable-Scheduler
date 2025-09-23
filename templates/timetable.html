@@ -243,22 +243,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function loadTimetableData() {
+        console.log('🔄 Loading timetable data...');
         showLoading();
         try {
             const response = await fetch('/api/timetable_data');
+            console.log('📡 API response status:', response.status);
+            
             if (response.ok) {
                 timetableData = await response.json();
+                console.log('📊 Received timetable data:', timetableData.length, 'entries');
+                console.log('📄 Sample data:', timetableData[0]);
+                
                 filteredData = [...timetableData];
                 updateStatistics();
                 renderTimetable();
                 hideLoading();
                 
                 if (timetableData.length === 0) {
+                    console.log('📭 No data, showing empty state');
                     showEmptyState();
                 } else {
+                    console.log('✅ Data loaded, showing timetable');
                     showTimetable();
                 }
             } else {
+                const errorData = await response.json();
+                console.error('❌ API error:', errorData);
                 throw new Error('Failed to load timetable data');
             }
         } catch (error) {
@@ -369,11 +379,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const days = SETTINGS.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
         const periods = generatePeriods();
         
+        console.log('📅 Days:', days);
+        console.log('⏰ Periods:', periods);
+        console.log('📊 Filtered data:', filteredData.length, 'entries');
+        
         // Create header
         const headerRow = document.getElementById('table-header');
-        headerRow.innerHTML = '<th class="border border-gray-300 px-4 py-2 bg-gray-100 font-medium">Time</th>';
+        headerRow.innerHTML = '<th class="border border-gray-600 px-4 py-2 bg-gray-700 text-gray-200 font-medium">Time</th>';
         days.forEach(day => {
-            headerRow.innerHTML += `<th class="border border-gray-300 px-4 py-2 bg-gray-100 font-medium">${day}</th>`;
+            headerRow.innerHTML += `<th class="border border-gray-600 px-4 py-2 bg-gray-700 text-gray-200 font-medium">${day}</th>`;
         });
         
         // Create body
@@ -382,29 +396,37 @@ document.addEventListener('DOMContentLoaded', () => {
         
         periods.forEach(period => {
             const row = document.createElement('tr');
-            row.innerHTML = `<td class="border border-gray-300 px-4 py-2 bg-gray-50 font-medium">${period.time}</td>`;
+            row.innerHTML = `<td class="border border-gray-600 px-4 py-2 bg-gray-800 text-gray-200 font-medium">${period.time}</td>`;
             
             days.forEach(day => {
                 const cellData = filteredData.filter(entry => 
                     entry.day === day && entry.period === period.number
                 );
                 
+                // Debug logging for first few cells
+                if (period.number <= 2 && day === 'Monday') {
+                    console.log(`🔍 Checking ${day} Period ${period.number}:`, cellData.length, 'entries');
+                    if (cellData.length > 0) {
+                        console.log('📝 Entry data:', cellData[0]);
+                    }
+                }
+                
                 const cell = document.createElement('td');
-                cell.className = 'border border-gray-300 px-2 py-1 min-h-[60px]';
+                cell.className = 'border border-gray-600 px-2 py-1 min-h-[60px] bg-gray-900';
                 
                 if (cellData.length > 0) {
                     cellData.forEach(entry => {
                         const classDiv = document.createElement('div');
-                        classDiv.className = 'bg-blue-100 border border-blue-300 rounded p-2 mb-1 text-xs';
+                        classDiv.className = 'bg-blue-900 border border-blue-600 rounded p-2 mb-1 text-xs text-gray-200';
                         classDiv.innerHTML = `
-                            <div class="font-medium">${entry.subject}</div>
-                            <div class="text-gray-600">${entry.teacher}</div>
-                            <div class="text-gray-500">${entry.section} - ${entry.classroom}</div>
+                            <div class="font-medium text-blue-300">${entry.subject}</div>
+                            <div class="text-gray-300">${entry.teacher}</div>
+                            <div class="text-gray-400">${entry.section} - ${entry.classroom}</div>
                         `;
                         cell.appendChild(classDiv);
                     });
                 } else {
-                    cell.innerHTML = '<div class="text-gray-400 text-center py-4">-</div>';
+                    cell.innerHTML = '<div class="text-gray-500 text-center py-4">-</div>';
                 }
                 
                 row.appendChild(cell);

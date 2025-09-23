@@ -114,6 +114,13 @@ class TimetableEntry(db.Model):
     course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=True)
     section_id = db.Column(db.Integer, db.ForeignKey('student_section.id'), nullable=False)
     classroom_id = db.Column(db.Integer, db.ForeignKey('classroom.id'), nullable=False)
+    
+    # Relationships
+    teacher = relationship("Teacher", backref="timetable_entries")
+    subject = relationship("Subject", backref="timetable_entries")
+    course = relationship("Course", backref="timetable_entries")
+    section = relationship("StudentSection", backref="timetable_entries")
+    classroom = relationship("Classroom", backref="timetable_entries")
 
 class AttendanceRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)

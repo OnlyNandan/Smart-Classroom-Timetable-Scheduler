@@ -23,11 +23,27 @@ def view_timetable():
         return redirect(url_for('main.login'))
     
     # Pass settings needed to build the timetable grid on the frontend
+    working_days_raw = AppConfig.query.filter_by(key='working_days').first().value
+    
+    # Handle different working_days formats
+    if working_days_raw.startswith('['):
+        # Already JSON array
+        working_days = json.loads(working_days_raw)
+    else:
+        # Convert string like "Monday - Friday" to array
+        if 'Monday - Friday' in working_days_raw:
+            working_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+        elif 'Monday - Saturday' in working_days_raw:
+            working_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+        else:
+            # Fallback to default
+            working_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+    
     settings = {
         'start_time': AppConfig.query.filter_by(key='start_time').first().value,
         'end_time': AppConfig.query.filter_by(key='end_time').first().value,
         'period_duration': AppConfig.query.filter_by(key='period_duration').first().value,
-        'working_days': json.loads(AppConfig.query.filter_by(key='working_days').first().value),
+        'working_days': working_days,
         'breaks': json.loads(AppConfig.query.filter_by(key='breaks').first().value),
     }
     return render_template('timetable.html', settings=settings)
@@ -181,7 +197,7 @@ def generate_gemini_prompt(teachers, sections, classrooms, subjects_or_courses, 
             'room_id': classroom.room_id,
             'capacity': classroom.capacity,
             'features': classroom.features or [],
-            'type': 'lab' if 'lab' in (classroom.features or '').lower() else 'regular',
+            'type': 'lab' if 'lab' in str(classroom.features or '').lower() else 'regular',
             'floor': classroom.room_id[-1] if classroom.room_id and classroom.room_id[-1].isdigit() else '1'
         }
         classrooms_data.append(classroom_info)
@@ -197,8 +213,8 @@ def generate_gemini_prompt(teachers, sections, classrooms, subjects_or_courses, 
                 'weekly_hours': subject.weekly_hours,
                 'is_elective': subject.is_elective,
                 'stream': str(subject.stream.name) if subject.stream and hasattr(subject.stream, 'name') else None,
-                'complexity': 'high' if 'math' in subject.name.lower() or 'physics' in subject.name.lower() else 'medium',
-                'best_periods': [1, 2] if 'math' in subject.name.lower() else [3, 4, 5],
+                'complexity': 'high' if 'math' in str(subject.name).lower() or 'physics' in str(subject.name).lower() else 'medium',
+                'best_periods': [1, 2] if 'math' in str(subject.name).lower() else [3, 4, 5],
                 'consecutive_periods': True if subject.weekly_hours > 4 else False,
                 'requires_lab': subject.requires_lab if hasattr(subject, 'requires_lab') else False
             }
@@ -210,8 +226,8 @@ def generate_gemini_prompt(teachers, sections, classrooms, subjects_or_courses, 
                 'credits': subject.credits,
                 'course_type': subject.course_type,
                 'department': str(subject.department.name) if subject.department and hasattr(subject.department, 'name') else None,
-                'complexity': 'high' if 'math' in subject.name.lower() or 'physics' in subject.name.lower() else 'medium',
-                'best_periods': [1, 2] if 'math' in subject.name.lower() else [3, 4, 5],
+                'complexity': 'high' if 'math' in str(subject.name).lower() or 'physics' in str(subject.name).lower() else 'medium',
+                'best_periods': [1, 2] if 'math' in str(subject.name).lower() else [3, 4, 5],
                 'consecutive_periods': True if subject.credits > 3 else False
             }
         subjects_data.append(subject_info)
@@ -293,7 +309,6 @@ Return a JSON array of timetable entries. Each entry must have:
 - classroom_id: integer
 - subject_id: integer (for school mode)
 - course_id: integer (for college mode)
-- is_homeroom: boolean (true for primary homeroom periods)
 
 IMPORTANT: This timetable will be used for the ENTIRE ACADEMIC YEAR. Ensure:
 - Teacher assignments are consistent and sustainable
@@ -307,80 +322,255 @@ Return ONLY the JSON array, no additional text or explanations.
 
     return prompt
 
-def call_gemini_api(prompt):
-    """Call Gemini API to generate timetable."""
-    try:
-        api_key = os.getenv('GEMINI_API_KEY')
-        if not api_key:
-            raise ValueError("GEMINI_API_KEY not found in environment variables")
-        
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}"
-        
-        headers = {
-            'Content-Type': 'application/json',
-        }
-        
-        data = {
-            "contents": [{
-                "parts": [{
-                    "text": prompt
-                }]
+def call_gemini_api(prompt, max_retries=3):
+    """Call Gemini API to generate timetable with retry logic for rate limits."""
+    import time
+    
+    print("🚀 Starting Gemini API call...")
+    log_activity('info', 'Starting Gemini API call')
+    
+    api_key = os.getenv('GEMINI_API_KEY')
+    if not api_key:
+        print("❌ No API key found")
+        raise ValueError("GEMINI_API_KEY not found in environment variables")
+    
+    print(f"✅ API key found: {api_key[:10]}...")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    print(f"📡 API URL: {url}")
+    
+    headers = {
+        'Content-Type': 'application/json',
+    }
+    
+    data = {
+        "contents": [{
+            "parts": [{
+                "text": prompt
             }]
-        }
-        
-        response = requests.post(url, headers=headers, json=data, timeout=60)
-        response.raise_for_status()
-        
-        result = response.json()
-        
-        if 'candidates' in result and len(result['candidates']) > 0:
-            content = result['candidates'][0]['content']['parts'][0]['text']
-            # Clean up the response to extract JSON
-            content = content.strip()
-            if content.startswith('```json'):
-                content = content[7:]
-            if content.endswith('```'):
-                content = content[:-3]
+        }]
+    }
+    
+    # Check payload size before making request
+    payload_size = len(json.dumps(data))
+    print(f"📦 Payload size: {payload_size} characters")
+    log_activity('info', f'Gemini API payload size: {payload_size} characters')
+    
+    if payload_size > 1000000:  # 1MB limit
+        print(f"❌ Payload too large: {payload_size} chars")
+        raise ValueError(f"Payload too large ({payload_size} chars). Please reduce data size.")
+    
+    for attempt in range(max_retries):
+        try:
+            print(f"🔄 Attempt {attempt + 1}/{max_retries}")
+            print("📤 Sending request to Gemini API...")
             
-            return json.loads(content)
-        else:
-            raise ValueError("No valid response from Gemini API")
+            start_time = time.time()
+            response = requests.post(url, headers=headers, json=data, timeout=120)  # Increased timeout
+            request_time = time.time() - start_time
             
+            print(f"📥 Response received in {request_time:.2f}s")
+            print(f"📊 Status: {response.status_code} - {response.reason}")
+            
+            # Log detailed response info for debugging
+            log_activity('info', f'Gemini API response: {response.status_code} - {response.reason} (took {request_time:.2f}s)')
+            
+            # Handle different error types specifically
+            if response.status_code == 429:
+                print("⚠️ Rate limit hit")
+                if attempt < max_retries - 1:
+                    wait_time = (2 ** attempt) * 5  # Exponential backoff: 5s, 10s, 20s
+                    print(f"⏳ Waiting {wait_time} seconds before retry...")
+                    log_activity('warning', f'Rate limit hit, retrying in {wait_time} seconds (attempt {attempt + 1}/{max_retries})')
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    print("❌ Rate limit exceeded after all retries")
+                    raise ValueError("Rate limit exceeded. Please wait a few minutes before trying again.")
+            
+            elif response.status_code == 400:
+                # Bad request - likely payload or API key issue
+                error_detail = response.text
+                print(f"❌ Bad request: {error_detail}")
+                log_activity('error', f'Bad request (400): {error_detail}')
+                if 'API key' in error_detail or 'authentication' in error_detail.lower():
+                    raise ValueError("Invalid API key. Please check your GEMINI_API_KEY in .env file.")
+                elif 'payload' in error_detail.lower() or 'size' in error_detail.lower():
+                    raise ValueError(f"Payload too large or malformed ({payload_size} chars). Please reduce data size.")
+                else:
+                    raise ValueError(f"Bad request: {error_detail}")
+            
+            elif response.status_code == 403:
+                # Forbidden - likely API key or quota issue
+                error_detail = response.text
+                print(f"❌ Forbidden: {error_detail}")
+                log_activity('error', f'Forbidden (403): {error_detail}')
+                if 'quota' in error_detail.lower():
+                    raise ValueError("API quota exceeded. Please check your Gemini API usage limits.")
+                elif 'billing' in error_detail.lower():
+                    raise ValueError("Billing issue. Please check your Google Cloud billing.")
+                else:
+                    raise ValueError(f"Access forbidden: {error_detail}")
+            
+            elif response.status_code == 404:
+                # Not found - model or endpoint issue
+                print("❌ Model not found")
+                raise ValueError("Model not found. Please check if 'gemini-1.5-flash' is available in your region.")
+            
+            elif response.status_code >= 500:
+                # Server error
+                print(f"❌ Server error: {response.text}")
+                log_activity('error', f'Server error ({response.status_code}): {response.text}')
+                if attempt < max_retries - 1:
+                    wait_time = (2 ** attempt) * 3  # Shorter wait for server errors
+                    print(f"⏳ Server error, retrying in {wait_time} seconds...")
+                    log_activity('warning', f'Server error, retrying in {wait_time} seconds: {response.text}')
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    raise ValueError(f"Server error ({response.status_code}): {response.text}")
+            
+            print("✅ Response successful, parsing...")
+            response.raise_for_status()
+            result = response.json()
+            
+            print(f"📄 Response keys: {list(result.keys())}")
+            
+            if 'candidates' in result and len(result['candidates']) > 0:
+                print("✅ Found candidates in response")
+                content = result['candidates'][0]['content']['parts'][0]['text']
+                print(f"📝 Content length: {len(content)} characters")
+                
+                # Clean up the response to extract JSON
+                content = content.strip()
+                if content.startswith('```json'):
+                    content = content[7:]
+                if content.endswith('```'):
+                    content = content[:-3]
+                
+                print("🔄 Parsing JSON response...")
+                parsed_result = json.loads(content)
+                print(f"✅ Successfully parsed JSON with {len(parsed_result)} entries")
+                log_activity('info', f'Successfully received and parsed Gemini response with {len(parsed_result)} entries')
+                
+                return parsed_result
+            else:
+                print("❌ No valid candidates in response")
+                print(f"📄 Full response: {result}")
+                raise ValueError("No valid response from Gemini API")
+                
+        except requests.exceptions.Timeout as e:
+            print(f"⏰ Request timeout: {e}")
+            if attempt < max_retries - 1:
+                wait_time = (2 ** attempt) * 5
+                print(f"⏳ Timeout, retrying in {wait_time} seconds...")
+                log_activity('warning', f'Request timeout, retrying in {wait_time} seconds: {e}')
+                time.sleep(wait_time)
+                continue
+            else:
+                log_activity('error', f'Request timeout after {max_retries} attempts: {e}')
+                raise ValueError(f"Request timeout: {e}")
+                
+        except requests.exceptions.RequestException as e:
+            print(f"🌐 Network error: {e}")
+            if attempt < max_retries - 1:
+                wait_time = (2 ** attempt) * 2  # Shorter wait for network errors
+                print(f"⏳ Network error, retrying in {wait_time} seconds...")
+                log_activity('warning', f'Network error, retrying in {wait_time} seconds: {e}')
+                time.sleep(wait_time)
+                continue
+            else:
+                log_activity('error', f'Gemini API call failed after {max_retries} attempts: {e}')
+                raise ValueError(f"Failed to generate timetable: {e}")
+        except json.JSONDecodeError as e:
+            print(f"📄 JSON decode error: {e}")
+            print(f"📝 Raw content: {content[:500]}...")
+            log_activity('error', f'JSON decode error: {e}')
+            raise ValueError(f"Invalid JSON response from Gemini API: {e}")
+        except Exception as e:
+            print(f"💥 Unexpected error: {e}")
+            log_activity('error', f'Gemini API call failed: {e}')
+            raise ValueError(f"Failed to generate timetable: {e}")
+    
+    print("❌ All retry attempts failed")
+    raise ValueError("All retry attempts failed")
+
+@timetable_bp.route('/test_gemini_api', methods=['GET'])
+def test_gemini_api():
+    """Test Gemini API connection with a simple request."""
+    if 'user_id' not in session:
+        return redirect(url_for('main.login'))
+    
+    try:
+        # Simple test prompt
+        test_prompt = "Generate a simple JSON response: {\"status\": \"working\", \"message\": \"API connection successful\"}"
+        
+        result = call_gemini_api(test_prompt, max_retries=1)
+        
+        return jsonify({
+            "success": True,
+            "message": "Gemini API connection successful",
+            "response": result
+        })
+        
     except Exception as e:
-        log_activity('error', f'Gemini API call failed: {e}')
-        raise e
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "message": "Gemini API connection failed"
+        }), 500
 
 @timetable_bp.route('/generate_timetable', methods=['POST'])
 def generate_timetable():
     if 'user_id' not in session:
         return redirect(url_for('main.login'))
     
+    print("🚀 Starting timetable generation...")
+    log_activity('info', 'Starting timetable generation')
     start_time = time.time()
     
     try:
+        print("📊 Gathering data from database...")
         # Data gathering
         teachers = Teacher.query.options(joinedload(Teacher.subjects), joinedload(Teacher.courses)).all()
+        print(f"👥 Found {len(teachers)} teachers")
+        
         sections = StudentSection.query.options(joinedload(StudentSection.students)).all()
+        print(f"🏫 Found {len(sections)} sections")
+        
         classrooms = Classroom.query.all()
+        print(f"🏢 Found {len(classrooms)} classrooms")
+        
         subjects_or_courses = Subject.query.all() if g.app_mode == 'school' else Course.query.all()
+        print(f"📚 Found {len(subjects_or_courses)} {'subjects' if g.app_mode == 'school' else 'courses'}")
         
         # Check if we have minimum required data
         if not teachers:
+            print("❌ No teachers found")
             return jsonify({"message": "No teachers found. Please add teachers first."}), 400
         if not sections:
+            print("❌ No sections found")
             return jsonify({"message": "No sections found. Please add sections first."}), 400
         if not classrooms:
+            print("❌ No classrooms found")
             return jsonify({"message": "No classrooms found. Please add classrooms first."}), 400
         if not subjects_or_courses:
+            print(f"❌ No {'subjects' if g.app_mode == 'school' else 'courses'} found")
             return jsonify({"message": f"No {'subjects' if g.app_mode == 'school' else 'courses'} found. Please add {'subjects' if g.app_mode == 'school' else 'courses'} first."}), 400
         
+        print("⚙️ Loading settings...")
         settings = {item.key: item.value for item in AppConfig.query.all()}
         settings['breaks'] = json.loads(settings.get('breaks', '[]'))
         settings['working_days'] = json.loads(settings.get('working_days', '[]'))
+        print(f"📋 Settings loaded: {len(settings)} items")
         
+        print("📝 Generating AI prompt...")
         # Generate prompt and call Gemini API
         prompt = generate_gemini_prompt(teachers, sections, classrooms, subjects_or_courses, settings)
+        print(f"📄 Prompt generated: {len(prompt)} characters")
+        
+        print("🤖 Calling Gemini API...")
         schedule = call_gemini_api(prompt)
+        print(f"✅ Received schedule from AI: {len(schedule) if schedule else 0} entries")
         
         if schedule and isinstance(schedule, list):
             # Clear existing timetable
@@ -403,7 +593,25 @@ def generate_timetable():
                         continue
                     entry_data.pop('subject_id', None)
                 
-                db.session.add(TimetableEntry(**entry_data))
+                # Filter out any invalid fields that don't exist in the model
+                valid_fields = ['day', 'period', 'teacher_id', 'subject_id', 'course_id', 'section_id', 'classroom_id']
+                filtered_data = {k: v for k, v in entry_data.items() if k in valid_fields}
+                
+                # Validate day field length (max 10 characters)
+                if 'day' in filtered_data and len(str(filtered_data['day'])) > 10:
+                    print(f"⚠️ Day field too long: {filtered_data['day']}, truncating...")
+                    filtered_data['day'] = str(filtered_data['day'])[:10]
+                
+                # Validate period is integer
+                if 'period' in filtered_data:
+                    try:
+                        filtered_data['period'] = int(filtered_data['period'])
+                    except (ValueError, TypeError):
+                        print(f"⚠️ Invalid period: {filtered_data['period']}, skipping entry")
+                        continue
+                
+                print(f"📝 Creating timetable entry: {filtered_data}")
+                db.session.add(TimetableEntry(**filtered_data))
             
             gen_time = round(time.time() - start_time, 2)
             set_config('last_generation_time', gen_time)
@@ -416,8 +624,12 @@ def generate_timetable():
             raise ValueError("Invalid response from Gemini API")
             
     except Exception as e:
+        import traceback
+        error_traceback = traceback.format_exc()
+        print(f"💥 Full error traceback:\n{error_traceback}")
         db.session.rollback()
         log_activity('error', f'Timetable generation failed: {e}')
+        log_activity('error', f'Error traceback: {error_traceback}')
         return jsonify({"message": f"Failed to generate timetable: {str(e)}"}), 500
 
 @timetable_bp.route('/api/manage_absence', methods=['POST'])
@@ -469,7 +681,7 @@ def manage_teacher_absence():
                     'date': date,
                     'original_teacher': original_teacher.full_name,
                     'substitute_teacher': substitute_teacher.full_name,
-                    'subject': entry.subject.name if entry.subject else entry.course.name,
+                    'subject': str(entry.subject.name) if entry.subject else str(entry.course.name),
                     'section': entry.section.name,
                     'period': entry.period,
                     'reason': reason
@@ -501,7 +713,7 @@ def generate_substitution_prompt(affected_entries, available_teachers, reason):
             'id': entry.id,
             'day': entry.day,
             'period': entry.period,
-            'subject': entry.subject.name if entry.subject else entry.course.name,
+            'subject': str(entry.subject.name) if entry.subject else str(entry.course.name),
             'section': entry.section.name,
             'grade_level': str(entry.section.grade.name) if entry.section.grade and hasattr(entry.section.grade, 'name') else 'Unknown'
         }
@@ -512,8 +724,8 @@ def generate_substitution_prompt(affected_entries, available_teachers, reason):
         teacher_info = {
             'id': teacher.id,
             'name': teacher.full_name,
-            'subjects': [s.name for s in teacher.subjects] if teacher.subjects else [],
-            'courses': [c.name for c in teacher.courses] if teacher.courses else [],
+            'subjects': [str(s.name) for s in teacher.subjects] if teacher.subjects else [],
+            'courses': [str(c.name) for c in teacher.courses] if teacher.courses else [],
             'max_hours_week': teacher.max_weekly_hours,
             'current_load': len(TimetableEntry.query.filter_by(teacher_id=teacher.id).all())
         }
