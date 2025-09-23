@@ -328,7 +328,7 @@ document.getElementById('submit-btn').addEventListener('click', async function(e
     formData.append('payload', JSON.stringify(payload));
 
     try {
-        const response = await fetch("{{ url_for('setup') }}", { method: 'POST', body: formData });
+        const response = await fetch("{{ url_for('main.setup') }}", { method: 'POST', body: formData });
         const result = await response.json();
         
         if (result.status === 'success') {
