@@ -15,7 +15,6 @@
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px;}
-        .main-content { transition: margin-left 0.3s ease-in-out; }
         .active-nav-link { background-color: rgba(124, 58, 237, 0.3); color: #c4b5fd; font-weight: 600; }
         .active-nav-link svg { color: #a78bfa; }
     </style>
@@ -23,7 +22,7 @@
 <body class="bg-gradient-body text-gray-200">
     <div class="flex h-screen overflow-hidden">
         <!-- Responsive Sidebar -->
-        <aside id="sidebar" class="w-64 flex-shrink-0 glass-sidebar fixed inset-y-0 left-0 z-30 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out">
+        <aside id="sidebar" class="w-64 flex-shrink-0 glass-sidebar fixed inset-y-0 left-0 z-30 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
             <div class="flex items-center justify-center h-20 border-b border-gray-800">
                 <h1 class="text-2xl font-bold text-purple-400 px-4 text-center">{{ institute_name }}</h1>
             </div>
@@ -52,17 +51,16 @@
         </aside>
 
         <!-- Main Content -->
-        <div id="main-content" class="flex-1 flex flex-col overflow-hidden md:ml-64">
-            <header class="flex items-center justify-between p-4 h-20 bg-gray-900/50">
+        <div class="flex-1 flex flex-col overflow-hidden md:ml-64">
+             <header class="flex items-center justify-between p-4 h-20 bg-gray-900/50 flex-shrink-0">
                 <!-- Hamburger Menu for Mobile -->
                 <button id="sidebar-toggle" class="md:hidden p-2 rounded-md text-gray-400 hover:bg-gray-700">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                 </button>
-                 <div class="flex-grow md:hidden"></div> <!-- Spacer for mobile -->
                 
                 <div class="hidden sm:block">{% block header %}{% endblock %}</div>
                 
-                 <div class="flex-grow md:hidden"></div> <!-- Spacer for mobile -->
+                <div class="flex-grow sm:hidden"></div> <!-- Spacer for mobile to center header content -->
                 
                 {% if session.username %}
                 <div class="relative">
@@ -77,7 +75,7 @@
                 </div>
                 {% endif %}
             </header>
-            <main class="flex-1 overflow-x-hidden overflow-y-auto p-6">
+            <main class="flex-1 overflow-y-auto p-6">
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         {% for category, message in messages %}
