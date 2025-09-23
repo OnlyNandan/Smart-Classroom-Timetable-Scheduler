@@ -19,7 +19,7 @@ def get_structure_items(mode):
     
     items_data = []
     if mode == 'school':
-        groups = SchoolGroup.query.options(db.joinedload('*')).all()
+        groups = SchoolGroup.query.options(db.joinedload(SchoolGroup.grades), db.joinedload(SchoolGroup.streams)).all()
         for group in groups:
             items_data.append({
                 "id": group.id, "name": group.name,
@@ -27,7 +27,7 @@ def get_structure_items(mode):
                 "streams": [{"id": s.id, "name": s.name} for s in group.streams]
             })
     elif mode == 'college':
-        semesters = Semester.query.options(db.joinedload('*')).all()
+        semesters = Semester.query.options(db.joinedload(Semester.departments)).all()
         for sem in semesters:
             items_data.append({
                 "id": sem.id, "name": sem.name,
