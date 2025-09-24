@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from app import create_app
 from models import db, User, Teacher, Student, StudentSection, Department, Semester, Course, Subject, Classroom, TimetableEntry, Grade, SchoolGroup, Stream, Exam, ExamSeating, AppConfig
 from werkzeug.security import generate_password_hash
+from sqlalchemy import text
 
 fake = Faker()
 
@@ -86,6 +87,10 @@ def clear_database():
         
         # Delete users last
         db.session.query(User).delete()
+        db.session.commit()
+        
+        # Delete AppConfig
+        db.session.query(AppConfig).delete()
         db.session.commit()
         
         print("✅ Database cleared")
@@ -297,7 +302,7 @@ def create_realistic_data():
     # Create sections for each department
     sections = []
     for dept in departments:
-        for section_letter in ['A', 'B', 'C', 'D', 'E']:
+        for section_letter in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']:  # 8 sections per department
             section = StudentSection(
                 name=f"Section {section_letter}",
                 capacity=30,
@@ -337,7 +342,7 @@ def create_realistic_data():
     
     # Create users and teachers
     teachers = []
-    for i in range(50):  # 50 teachers
+    for i in range(80):  # 80 teachers (more coverage)
         user = User(
             username=f"teacher{i+1:02d}",
             email=f"teacher{i+1:02d}@rvc.edu",
@@ -366,9 +371,19 @@ def create_realistic_data():
             teacher = random.choice(available_teachers)
             teacher_course_assignments.append((teacher.id, course.id))
     
+    # Insert teacher-course assignments into database
+    if teacher_course_assignments:
+        print(f"🔗 Assigning {len(teacher_course_assignments)} teacher-course relationships...")
+        for teacher_id, course_id in teacher_course_assignments:
+            db.session.execute(text(
+                "INSERT INTO teacher_college_courses (teacher_id, course_id) VALUES (:teacher_id, :course_id)"
+            ), {"teacher_id": teacher_id, "course_id": course_id})
+        db.session.commit()
+        print("✅ Teacher-course assignments completed!")
+    
     # Create students
     students = []
-    for i in range(500):  # 500 students
+    for i in range(600):  # 600 students (more than 500 minimum)
         user = User(
             username=f"student{i+1:03d}",
             email=f"student{i+1:03d}@rvc.edu",
@@ -408,7 +423,7 @@ def create_realistic_data():
         ('end_time', '17:00'),
         ('period_duration', '60'),
         ('breaks', '[{"name": "Lunch Break", "start_time": "13:00", "end_time": "14:00"}]'),
-        ('setup_completed', 'true'),
+        ('setup_complete', 'true'),
         ('last_schedule_accuracy', '95.0'),
         ('last_generation_time', '2.5')
     ]
@@ -428,6 +443,7 @@ def create_realistic_data():
     print(f"   🏫 Classrooms: {len(classrooms)}")
     print(f"   👨‍🏫 Teachers: {len(teachers)}")
     print(f"   👨‍🎓 Students: {len(students)}")
+    print(f"   📊 Total capacity: {len(sections) * 30} students")
     
     return {
         'semesters': semesters,
@@ -451,8 +467,8 @@ def main():
             print("\n🎉 Database initialization completed successfully!")
             print("\n📋 Login credentials:")
             print("   Admin: admin / admin123")
-            print("   Teachers: teacher01-teacher50 / teacher123")
-            print("   Students: student001-student500 / student123")
+            print("   Teachers: teacher01-teacher80 / teacher123")
+            print("   Students: student001-student600 / student123")
             
         except Exception as e:
             print(f"❌ Error initializing database: {e}")
