@@ -64,7 +64,7 @@
                                 <div><label for="working_days" class="block text-sm font-medium text-gray-300 mb-1">Working Days</label><select id="working_days" name="working_days" class="input-base" required><option>Monday - Friday</option><option>Monday - Saturday</option></select></div>
                                 <div><label for="start_time" class="block text-sm font-medium text-gray-300 mb-1">Start Time</label><input type="time" id="start_time" name="start_time" class="input-base" required></div>
                                 <div><label for="end_time" class="block text-sm font-medium text-gray-300 mb-1">End Time</label><input type="time" id="end_time" name="end_time" class="input-base" required></div>
-                                <div><label for="period_duration" class="block text-sm font-medium text-gray-300 mb-1">Period (min)</label><input type="number" id="period_duration" name="period_duration" class="input-base" value="45" required></div>
+                                <div><label for="period_duration" class="block text-sm font-medium text-gray-300 mb-1">Period (min)</label><input type="number" id="period_duration" name="period_duration" class="input-base" value="60" required></div>
                             </div>
                          </div>
                          <div class="border-t border-gray-700 pt-6">
@@ -190,13 +190,13 @@ function applyPreset() {
     if (mode === 'school') {
         document.getElementById('start_time').value = '08:30';
         document.getElementById('end_time').value = '15:30';
-        document.getElementById('period_duration').value = '45';
+        document.getElementById('period_duration').value = '60';
         addBreak('Short Break', '10:30', '10:45');
         addBreak('Lunch Break', '12:00', '13:00');
     } else {
         document.getElementById('start_time').value = '09:00';
         document.getElementById('end_time').value = '17:00';
-        document.getElementById('period_duration').value = '50';
+        document.getElementById('period_duration').value = '60';
         addBreak('Lunch Break', '13:00', '14:00');
     }
 }
@@ -328,7 +328,7 @@ document.getElementById('submit-btn').addEventListener('click', async function(e
     formData.append('payload', JSON.stringify(payload));
 
     try {
-        const response = await fetch("{{ url_for('setup') }}", { method: 'POST', body: formData });
+        const response = await fetch("{{ url_for('main.setup') }}", { method: 'POST', body: formData });
         const result = await response.json();
         
         if (result.status === 'success') {

@@ -26,6 +26,7 @@ def create_app(config_class=Config):
     from routes.analytics import analytics_bp
     from routes.api import api_bp
     from routes.exams import exams_bp
+    from routes.electives import electives_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(structure_bp)
@@ -37,6 +38,7 @@ def create_app(config_class=Config):
     app.register_blueprint(analytics_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(exams_bp)
+    app.register_blueprint(electives_bp)
 
     # --- Application Hooks & Context Processors ---
     @app.before_request
@@ -82,4 +84,4 @@ if __name__ == '__main__':
              db.session.add(SystemMetric(key='classes_scheduled', value=TimetableEntry.query.count()))
              db.session.commit()
              
-    app.run(debug=True)
+    app.run(debug=True, port=8000)

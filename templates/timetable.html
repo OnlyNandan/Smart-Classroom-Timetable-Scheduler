@@ -65,6 +65,36 @@
             </div>
         </div>
 
+        <!-- Selection Controls -->
+        <div class="glass-card p-6 mb-6">
+            <h3 class="text-lg font-semibold text-gray-200 mb-4">Select Timetable View</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Semester</label>
+                    <select id="semester-select" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">All Semesters</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Department</label>
+                    <select id="department-select" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500" disabled>
+                        <option value="">All Departments</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Section</label>
+                    <select id="section-select" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500" disabled>
+                        <option value="">All Sections</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mt-4 flex gap-2">
+                <button id="clear-filter-btn" class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                    Clear Filter
+                </button>
+            </div>
+        </div>
+
         <!-- Section Timetables Container -->
         <div id="timetables-container" class="space-y-8">
             <!-- Section timetables will be populated by JavaScript -->
@@ -182,6 +212,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const timetablesContainer = document.getElementById('timetables-container');
     const emptyState = document.getElementById('empty-state');
     const loadingState = document.getElementById('loading-state');
+    
+    // Filter controls
+    const semesterSelect = document.getElementById('semester-select');
+    const departmentSelect = document.getElementById('department-select');
+    const sectionSelect = document.getElementById('section-select');
+    const clearFilterBtn = document.getElementById('clear-filter-btn');
     const generationModal = document.getElementById('generation-modal');
     const progressBar = document.getElementById('progress-bar');
     const progressText = document.getElementById('progress-text');
@@ -198,6 +234,18 @@ document.addEventListener('DOMContentLoaded', () => {
         generateBtn.addEventListener('click', generateTimetable);
         generateEmptyBtn.addEventListener('click', generateTimetable);
         exportBtn.addEventListener('click', exportTimetable);
+        
+        // Filter controls - auto-apply on change
+        semesterSelect.addEventListener('change', () => {
+            updateDepartmentOptions();
+            applyFilter();
+        });
+        departmentSelect.addEventListener('change', () => {
+            updateSectionOptions();
+            applyFilter();
+        });
+        sectionSelect.addEventListener('change', applyFilter);
+        clearFilterBtn.addEventListener('click', clearFilter);
     }
     
     async function loadTimetableData() {
@@ -250,21 +298,64 @@ document.addEventListener('DOMContentLoaded', () => {
         hideLoading();
         showTimetable();
         
-        // Get unique sections
-        const sections = [...new Set(timetableData.map(entry => entry.section))].sort();
+        // Get unique sections - group by section name AND department to handle duplicate names
+        const sectionGroups = {};
+        timetableData.forEach(entry => {
+            const key = `${entry.section_name}_${entry.department_name}`;
+            if (!sectionGroups[key]) {
+                sectionGroups[key] = {
+                    section: entry.section_name,
+                    department: entry.department_name,
+                    semester: entry.semester_name,
+                    entries: []
+                };
+            }
+            sectionGroups[key].entries.push(entry);
+        });
+        
+        const sections = Object.values(sectionGroups).sort((a, b) => {
+            if (a.semester !== b.semester) return a.semester.localeCompare(b.semester);
+            if (a.department !== b.department) return a.department.localeCompare(b.department);
+            return a.section.localeCompare(b.section);
+        });
         const days = SETTINGS.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
         const periods = generatePeriods();
         
         console.log('📚 Sections:', sections);
+        console.log('📚 Total sections found:', sections.length);
         console.log('📅 Days:', days);
         console.log('⏰ Periods:', periods);
+        console.log('📊 Total timetable data entries:', timetableData.length);
+        console.log('🔍 First 10 entries:', timetableData.slice(0, 10));
+        
+        // Debug: Show section distribution
+        sections.forEach(section => {
+            const sectionData = timetableData.filter(entry => entry.section_name === section.section);
+            console.log(`📋 Section ${section.section}: ${sectionData.length} classes`);
+        });
+        
+        // Populate filter dropdowns
+        populateFilterDropdowns();
         
         // Clear container
         timetablesContainer.innerHTML = '';
         
         // Create a table for each section
-        sections.forEach(section => {
-            const sectionData = timetableData.filter(entry => entry.section === section);
+        console.log(`🎨 Creating tables for ${sections.length} sections`);
+        console.log(`🎨 Sections array:`, sections);
+        
+        sections.forEach((sectionGroup, index) => {
+            const sectionData = sectionGroup.entries;
+            const sectionName = sectionGroup.section;
+            const departmentName = sectionGroup.department;
+            const semesterName = sectionGroup.semester;
+            
+            console.log(`📋 Section ${index + 1}/${sections.length}: ${semesterName} - ${departmentName} - ${sectionName} has ${sectionData.length} classes`);
+            
+            // Debug: Check if we're only processing first 5
+            if (index < 10) {
+                console.log(`🔍 Processing section ${index + 1}: ${semesterName} - ${departmentName} - ${sectionName}`);
+            }
             
             // Create section card
             const sectionCard = document.createElement('div');
@@ -274,13 +365,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const sectionHeader = document.createElement('div');
             sectionHeader.className = 'mb-4 flex items-center justify-between';
             
-            // Get semester and department info from first entry
-            const firstEntry = sectionData[0];
-            const semesterName = firstEntry.semester_name || 'Unknown';
-            const departmentName = firstEntry.department_name || 'Unknown';
-            
             sectionHeader.innerHTML = `
-                <h3 class="text-xl font-semibold text-gray-200">${semesterName} - ${departmentName} - ${section}</h3>
+                <h3 class="text-xl font-semibold text-gray-200">${semesterName} - ${departmentName} - ${sectionName}</h3>
                 <span class="text-sm text-gray-400">${sectionData.length} classes scheduled</span>
             `;
             sectionCard.appendChild(sectionHeader);
@@ -339,9 +425,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 const classDiv = document.createElement('div');
                                 classDiv.className = 'bg-blue-900 border border-blue-600 rounded p-2 mb-1 text-xs text-gray-200';
                                 classDiv.innerHTML = `
-                                    <div class="font-medium text-blue-300">${entry.subject}</div>
-                                    <div class="text-gray-300">${entry.teacher}</div>
-                                    <div class="text-gray-400">${entry.classroom}</div>
+                                    <div class="font-medium text-blue-300">${entry.subject_name || entry.course_name || 'Unknown'}</div>
+                                    <div class="text-gray-300">${entry.teacher_name || 'Unknown'}</div>
+                                    <div class="text-gray-400">${entry.classroom_name || 'Unknown'}</div>
                                 `;
                                 cell.appendChild(classDiv);
                             });
@@ -364,76 +450,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function generatePeriods() {
-        const startTime = SETTINGS.start_time || '09:00';
-        const endTime = SETTINGS.end_time || '17:00';
-        const periodDuration = parseInt(SETTINGS.period_duration) || 50;
-        const configuredBreaks = SETTINGS.breaks || [];
-        
-        const periods = [];
-        const start = parseTime(startTime);
-        const end = parseTime(endTime);
-        
-        let currentTime = start;
-        let periodNumber = 1;
-        
-        // Generate periods until we reach end time
-        while (currentTime < end) {
-            const periodStart = new Date(currentTime);
-            let periodEnd = new Date(currentTime.getTime() + periodDuration * 60000);
-            
-            // Check if period would go past end time
-            if (periodEnd > end) {
-                break;
-            }
-            
-            // Check if this period would overlap with any configured break
-            const overlappingBreak = configuredBreaks.find(breakInfo => {
-                const breakStart = parseTime(breakInfo.start);
-                const breakEnd = parseTime(breakInfo.end);
-                
-                // Check if period end overlaps with break start (within 10 minutes)
-                const timeDiff = Math.abs((periodEnd.getTime() - breakStart.getTime()) / 60000);
-                return timeDiff <= 10;
-            });
-            
-            // If period would overlap with break, cut it 10 minutes short
-            if (overlappingBreak) {
-                const breakStart = parseTime(overlappingBreak.start);
-                periodEnd = new Date(breakStart.getTime() - 10 * 60000); // Cut 10 minutes short
-            }
-            
-            // Add regular period
-            periods.push({
-                number: periodNumber,
-                time: formatTime(periodStart) + ' - ' + formatTime(periodEnd),
-                isBreak: false
-            });
-            
-            currentTime = periodEnd;
-            periodNumber++;
-            
-            // Check if we need to add a configured break
-            const currentTimeStr = formatTime(currentTime);
-            const configuredBreak = configuredBreaks.find(breakInfo => {
-                const breakTime = parseTime(breakInfo.start);
-                // Allow ±5 minutes flexibility
-                const timeDiff = Math.abs((currentTime.getTime() - breakTime.getTime()) / 60000);
-                return timeDiff <= 5;
-            });
-            
-            if (configuredBreak) {
-                const breakStart = parseTime(configuredBreak.start);
-                const breakEnd = parseTime(configuredBreak.end);
-                
-                periods.push({
-                    number: configuredBreak.name || `Break ${periodNumber - 1}`,
-                    time: formatTime(breakStart) + ' - ' + formatTime(breakEnd),
-                    isBreak: true
-                });
-                
-                currentTime = breakEnd;
-            }
-        }
+        // Fixed schedule with lunch break - 60 minute classes
+        const periods = [
+            { number: 1, time: "09:00 - 10:00", isBreak: false },
+            { number: 2, time: "10:00 - 11:00", isBreak: false },
+            { number: 3, time: "11:00 - 12:00", isBreak: false },
+            { number: 4, time: "12:00 - 13:00", isBreak: false },
+            { number: 5, time: "13:00 - 14:00", isBreak: true, label: "Lunch Break" },
+            { number: 6, time: "14:00 - 15:00", isBreak: false },
+            { number: 7, time: "15:00 - 16:00", isBreak: false },
+            { number: 8, time: "16:00 - 17:00", isBreak: false },
+            { number: 9, time: "17:00 - 18:00", isBreak: false },
+            { number: 10, time: "18:00 - 19:00", isBreak: false },
+            { number: 11, time: "19:00 - 20:00", isBreak: false },
+            { number: 12, time: "20:00 - 21:00", isBreak: false }
+        ];
         
         console.log('Generated periods:', periods);
         console.log('Break periods:', periods.filter(p => p.isBreak));
@@ -458,7 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Simulate section-by-section progress
             simulateSectionProgress();
             
-            const response = await fetch('/generate_timetable', {
+            const response = await fetch('/api/generate_timetable', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -593,6 +624,223 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             toast.classList.add('hidden');
         }, 5000);
+    }
+    
+    // Filter functions
+    function populateFilterDropdowns() {
+        if (!timetableData || timetableData.length === 0) return;
+        
+        // Get unique semesters
+        const semesters = [...new Set(timetableData.map(entry => entry.semester_name))].sort();
+        semesterSelect.innerHTML = '<option value="">All Semesters</option>';
+        semesters.forEach(semester => {
+            const option = document.createElement('option');
+            option.value = semester;
+            option.textContent = semester;
+            semesterSelect.appendChild(option);
+        });
+    }
+    
+    function updateDepartmentOptions() {
+        const selectedSemester = semesterSelect.value;
+        departmentSelect.innerHTML = '<option value="">All Departments</option>';
+        departmentSelect.disabled = !selectedSemester;
+        sectionSelect.innerHTML = '<option value="">All Sections</option>';
+        sectionSelect.disabled = true;
+        
+        if (!selectedSemester) return;
+        
+        // Get departments for selected semester
+        const departments = [...new Set(
+            timetableData
+                .filter(entry => entry.semester_name === selectedSemester)
+                .map(entry => entry.department_name)
+        )].sort();
+        
+        departments.forEach(department => {
+            const option = document.createElement('option');
+            option.value = department;
+            option.textContent = department;
+            departmentSelect.appendChild(option);
+        });
+    }
+    
+    function updateSectionOptions() {
+        const selectedSemester = semesterSelect.value;
+        const selectedDepartment = departmentSelect.value;
+        sectionSelect.innerHTML = '<option value="">All Sections</option>';
+        sectionSelect.disabled = !selectedDepartment;
+        
+        if (!selectedDepartment) return;
+        
+        // Get sections for selected semester and department
+        const sections = [...new Set(
+            timetableData
+                .filter(entry => 
+                    entry.semester_name === selectedSemester && 
+                    entry.department_name === selectedDepartment
+                )
+                .map(entry => entry.section_name)
+        )].sort();
+        
+        sections.forEach(section => {
+            const option = document.createElement('option');
+            option.value = section;
+            option.textContent = section;
+            sectionSelect.appendChild(option);
+        });
+    }
+    
+    function applyFilter() {
+        const selectedSemester = semesterSelect.value;
+        const selectedDepartment = departmentSelect.value;
+        const selectedSection = sectionSelect.value;
+        
+        console.log('🔍 Applying filter:', { selectedSemester, selectedDepartment, selectedSection });
+        
+        // Filter sections based on selections
+        let filteredSections = sections;
+        
+        if (selectedSemester) {
+            filteredSections = filteredSections.filter(section => section.semester === selectedSemester);
+            console.log('📚 After semester filter:', filteredSections.length, 'sections');
+        }
+        
+        if (selectedDepartment) {
+            filteredSections = filteredSections.filter(section => section.department === selectedDepartment);
+            console.log('📚 After department filter:', filteredSections.length, 'sections');
+        }
+        
+        if (selectedSection) {
+            filteredSections = filteredSections.filter(section => section.section === selectedSection);
+            console.log('📚 After section filter:', filteredSections.length, 'sections');
+        }
+        
+        console.log('✅ Final filtered sections:', filteredSections.length);
+        
+        // Re-render with filtered sections
+        renderFilteredTimetable(filteredSections);
+    }
+    
+    function clearFilter() {
+        semesterSelect.value = '';
+        departmentSelect.value = '';
+        sectionSelect.value = '';
+        departmentSelect.disabled = true;
+        sectionSelect.disabled = true;
+        
+        // Re-render with all sections
+        renderFilteredTimetable(sections);
+    }
+    
+    function renderFilteredTimetable(filteredSections) {
+        const days = SETTINGS.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        const periods = generatePeriods();
+        
+        // Clear container
+        timetablesContainer.innerHTML = '';
+        
+        if (filteredSections.length === 0) {
+            timetablesContainer.innerHTML = '<div class="text-center text-gray-400 py-8">No timetables found for the selected criteria.</div>';
+            return;
+        }
+        
+        // Create tables for filtered sections
+        filteredSections.forEach((sectionGroup, index) => {
+            const sectionData = sectionGroup.entries;
+            const sectionName = sectionGroup.section;
+            const departmentName = sectionGroup.department;
+            const semesterName = sectionGroup.semester;
+            
+            // Create section card
+            const sectionCard = document.createElement('div');
+            sectionCard.className = 'glass-card p-6';
+            
+            // Section header
+            const sectionHeader = document.createElement('div');
+            sectionHeader.className = 'mb-4 flex items-center justify-between';
+            sectionHeader.innerHTML = `
+                <h3 class="text-xl font-semibold text-gray-200">${semesterName} - ${departmentName} - ${sectionName}</h3>
+                <span class="text-sm text-gray-400">${sectionData.length} classes scheduled</span>
+            `;
+            sectionCard.appendChild(sectionHeader);
+            
+            // Create table (same logic as before)
+            const tableContainer = document.createElement('div');
+            tableContainer.className = 'overflow-x-auto';
+            
+            const table = document.createElement('table');
+            table.className = 'w-full border-collapse border border-gray-600';
+            
+            // Create header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            headerRow.innerHTML = '<th class="border border-gray-600 px-4 py-2 bg-gray-700 text-gray-200 font-medium">Time</th>';
+            days.forEach(day => {
+                headerRow.innerHTML += `<th class="border border-gray-600 px-4 py-2 bg-gray-700 text-gray-200 font-medium">${day}</th>`;
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+            
+            // Create body
+            const tbody = document.createElement('tbody');
+            
+            periods.forEach(period => {
+                const row = document.createElement('tr');
+                
+                // Style break periods differently
+                if (period.isBreak) {
+                    row.innerHTML = `<td class="border border-gray-600 px-4 py-2 bg-orange-800 text-orange-200 font-medium">${period.time}</td>`;
+                    
+                    days.forEach(day => {
+                        const cell = document.createElement('td');
+                        cell.className = 'border border-gray-600 px-2 py-1 min-h-[40px] bg-orange-900';
+                        
+                        const breakDiv = document.createElement('div');
+                        breakDiv.className = 'text-orange-300 text-center py-2 font-medium text-sm';
+                        breakDiv.textContent = 'BREAK';
+                        cell.appendChild(breakDiv);
+                        
+                        row.appendChild(cell);
+                    });
+                } else {
+                    row.innerHTML = `<td class="border border-gray-600 px-4 py-2 bg-gray-800 text-gray-200 font-medium">${period.time}</td>`;
+                    
+                    days.forEach(day => {
+                        const cellData = sectionData.filter(entry => 
+                            entry.day === day && entry.period === period.number
+                        );
+                        
+                        const cell = document.createElement('td');
+                        cell.className = 'border border-gray-600 px-2 py-1 min-h-[60px] bg-gray-900';
+                        
+                        if (cellData.length > 0) {
+                            const entry = cellData[0];
+                            const subjectName = entry.subject_name || entry.course_name || 'Unknown';
+                            const teacherName = entry.teacher || 'Unknown';
+                            const roomName = entry.classroom || 'Unknown';
+                            
+                            cell.innerHTML = `
+                                <div class="text-sm font-medium text-blue-300">${subjectName}</div>
+                                <div class="text-xs text-gray-400">${teacherName}</div>
+                                <div class="text-xs text-gray-500">${roomName}</div>
+                            `;
+                        } else {
+                            cell.innerHTML = '<div class="text-gray-600 text-center">-</div>';
+                        }
+                        
+                        row.appendChild(cell);
+                    });
+                }
+                
+                tbody.appendChild(row);
+            });
+            
+            table.appendChild(tbody);
+            tableContainer.appendChild(table);
+            sectionCard.appendChild(tableContainer);
+            timetablesContainer.appendChild(sectionCard);
+        });
     }
 });
 </script>

@@ -6,6 +6,7 @@ from sqlalchemy import exc
 from models import AppConfig, User, SchoolGroup, Grade, Stream, Subject, Semester, Department, Course, SystemMetric, ActivityLog, TimetableEntry
 from extensions import db
 from utils import hash_password, log_activity, calculate_growth, set_config
+from werkzeug.security import check_password_hash
 
 main_bp = Blueprint('main', __name__)
 
@@ -101,7 +102,7 @@ def login():
         return redirect(url_for('main.dashboard'))
     if request.method == 'POST':
         user = User.query.filter_by(username=request.form['username']).first()
-        if user and user.password == hash_password(request.form['password']):
+        if user and check_password_hash(user.password, request.form['password']):
             session['user_id'] = user.id
             session['username'] = user.username
             session['role'] = user.role

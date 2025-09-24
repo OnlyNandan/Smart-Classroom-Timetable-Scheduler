@@ -6,6 +6,7 @@ Combines Greedy + Backtracking, Genetic Algorithm, and Constraint Satisfaction
 import random
 import copy
 import time
+import datetime
 from typing import List, Dict, Tuple, Set, Optional
 from dataclasses import dataclass
 from collections import defaultdict
@@ -207,15 +208,15 @@ class ConstraintManager:
     # Helper methods (to be implemented based on your data model)
     def get_teacher_id(self, activity_id: str) -> int:
         # Extract teacher ID from activity
-        pass
+        return int(activity_id.split('_')[1])
     
     def get_room_id(self, activity_id: str) -> int:
         # Extract room ID from activity
-        pass
+        return int(activity_id.split('_')[2])
     
     def get_section_id(self, activity_id: str) -> int:
         # Extract section ID from activity
-        pass
+        return int(activity_id.split('_')[0])
     
     def get_subject_difficulty(self, activity_id: str) -> float:
         # Return difficulty level 0-1
@@ -407,17 +408,17 @@ class TimetableGenerator:
         
         # Adaptive population size (more complex = larger population)
         if complexity < 10000:  # Small problem
-            self.population_size = 50
-            self.generations = 30
-            self.mutation_rate = 0.1
+            self.population_size = 30
+            self.generations = 15
+            self.mutation_rate = 0.15
         elif complexity < 100000:  # Medium problem
-            self.population_size = 100
-            self.generations = 50
-            self.mutation_rate = 0.05
+            self.population_size = 50
+            self.generations = 20
+            self.mutation_rate = 0.12
         else:  # Large problem
-            self.population_size = 200
-            self.generations = 100
-            self.mutation_rate = 0.03
+            self.population_size = 80
+            self.generations = 25
+            self.mutation_rate = 0.1
         
         # Adaptive crossover rate
         self.crossover_rate = 0.8
@@ -433,36 +434,29 @@ class TimetableGenerator:
         print(f"   Elite size: {self.elite_size}")
     
     def generate(self) -> List[Dict]:
-        """Main generation pipeline using hybrid approach"""
-        print("🚀 Starting hybrid timetable generation...")
+        """ULTRA FAST timetable generation - greedy only"""
+        print("🚀 Starting ULTRA FAST timetable generation...")
         
-        # Phase 1: Quick feasible solution with Greedy + Backtracking
-        print("📋 Phase 1: Generating initial solution with Greedy + Backtracking...")
-        initial_solution = self.greedy_assignment()
+        # Phase 1: Greedy assignment (that's it!)
+        print("🎯 Building solution with optimized greedy assignment...")
+        solution = self.greedy_assignment()
         
-        if not initial_solution:
-            print("❌ Failed to generate initial solution")
+        if not solution:
+            print("❌ Failed to generate solution")
             return []
         
-        print(f"✅ Initial solution: {len(initial_solution)} activities scheduled")
+        print(f"✅ Solution complete: {len(solution)} activities scheduled")
         
-        # Phase 2: Optimize with Genetic Algorithm
-        print("🧬 Phase 2: Optimizing with Genetic Algorithm...")
-        optimized_solution = self.genetic_algorithm_optimization(initial_solution)
+        # Convert to timetable entries
+        print("📊 Converting to timetable entries...")
+        entries = self.convert_to_timetable_entries(solution)
+        print(f"📊 Converted to {len(entries)} timetable entries")
         
-        print(f"✅ GA optimization complete: {len(optimized_solution)} activities")
-        
-        # Phase 3: Local improvements with Constraint Satisfaction
-        print("🔧 Phase 3: Final constraint satisfaction refinement...")
-        final_solution = self.constraint_satisfaction_refinement(optimized_solution)
-        
-        print(f"🎉 Final solution: {len(final_solution)} activities scheduled")
-        
-        return self.convert_to_timetable_entries(final_solution)
+        return entries
     
     def greedy_assignment(self) -> Dict[str, TimeSlot]:
-        """Fast initial assignment using greedy + backtracking"""
-        print("🔍 Building initial schedule with greedy algorithm...")
+        """FAST greedy assignment with NO GAPS between classes"""
+        print("🚀 Starting FAST greedy assignment with NO GAPS...")
         
         # Create activities from sections
         activities = self.create_activities()
@@ -472,10 +466,6 @@ class TimetableGenerator:
             print("❌ No activities created")
             return {}
         
-        # Sort by difficulty (most constrained first)
-        activities.sort(key=lambda a: a.priority, reverse=True)
-        
-        schedule = {}
         available_slots = self.get_available_slots()
         print(f"⏰ Available time slots: {len(available_slots)}")
         
@@ -484,39 +474,60 @@ class TimetableGenerator:
         room_schedule = defaultdict(set)     # {room_id: {time_slots}}
         section_schedule = defaultdict(set)  # {section_id: {time_slots}}
         
+        # Initialize the schedule dictionary
+        schedule = {}  # {activity_id: TimeSlot}
+        
         assigned_count = 0
         failed_count = 0
         
+        # Group activities by section for better scheduling
+        section_activities = defaultdict(list)
         for activity in activities:
-            assigned = False
+            section_activities[activity.section_id].append(activity)
+        
+        # Schedule each section's activities consecutively to avoid gaps
+        for section_id, section_acts in section_activities.items():
+            print(f"📚 Scheduling {len(section_acts)} activities for section {section_id}")
             
-            # Try each available slot
-            for time_slot in available_slots:
-                if self.can_assign_activity(activity, time_slot, teacher_schedule, room_schedule, section_schedule):
-                    schedule[activity.id] = time_slot
+            # Sort activities by priority (higher priority first)
+            section_acts.sort(key=lambda x: x.priority, reverse=True)
+            
+            for activity in section_acts:
+                assigned = False
+                
+                # Find first available time slot
+                for time_slot in available_slots:
+                    day = time_slot.day
+                    period = time_slot.period
                     
-                    # Update resource tracking
-                    teacher_schedule[activity.teacher_id].add(time_slot)
-                    room_schedule[activity.room_id].add(time_slot)
-                    section_schedule[activity.section_id].add(time_slot)
+                    # Skip lunch break (period 5)
+                    if period == 5:
+                        continue
                     
-                    assigned = True
-                    assigned_count += 1
-                    break
-            
-            if not assigned:
-                failed_count += 1
-                print(f"⚠️ Could not assign activity {activity.id} (section {activity.section_id}, teacher {activity.teacher_id})")
+                    # Check conflicts
+                    teacher_busy = (day, period) in teacher_schedule[activity.teacher_id]
+                    room_busy = (day, period) in room_schedule[activity.room_id]
+                    section_busy = (day, period) in section_schedule[activity.section_id]
+                    
+                    if not (teacher_busy or room_busy or section_busy):
+                        # Assign the activity
+                        schedule[activity.id] = time_slot
+                        
+                        # Update resource tracking
+                        teacher_schedule[activity.teacher_id].add((day, period))
+                        room_schedule[activity.room_id].add((day, period))
+                        section_schedule[activity.section_id].add((day, period))
+                        
+                        assigned_count += 1
+                        assigned = True
+                        break
+                
+                if not assigned:
+                    failed_count += 1
+                    if failed_count <= 5:
+                        print(f"  ❌ Could not assign activity: {activity.id}")
         
-        print(f"✅ Greedy assignment complete: {assigned_count} assigned, {failed_count} failed")
-        
-        if assigned_count == 0:
-            print("❌ No activities could be assigned with current constraints")
-            print("🔄 Attempting fallback: reducing constraints...")
-            
-            # Fallback: try with relaxed constraints
-            return self.fallback_assignment(activities, available_slots)
-        
+        print(f"✅ FAST greedy assignment complete: {assigned_count} assigned, {failed_count} failed")
         return schedule
     
     def fallback_assignment(self, activities, available_slots):
@@ -664,13 +675,17 @@ class TimetableGenerator:
         """Evaluate fitness for entire population"""
         fitness_scores = []
         
-        for individual in population:
+        for i, individual in enumerate(population):
             # Check hard constraints
             violations = self.constraint_manager.validate_hard_constraints(individual)
             hard_penalty = sum(v.penalty for v in violations)
             
             if hard_penalty > 0:
                 # Invalid solution
+                if i == 0:  # Debug first individual
+                    print(f"🔍 Individual 0 has {len(violations)} violations:")
+                    for v in violations[:5]:  # Show first 5 violations
+                        print(f"  - {v.description}: {v.penalty}")
                 fitness_scores.append(-hard_penalty)
             else:
                 # Valid solution - evaluate soft constraints
@@ -786,106 +801,110 @@ class TimetableGenerator:
         return best_slot
     
     def create_activities(self) -> List[Activity]:
-        """Create activities dynamically based on available resources"""
-        print("🧮 Calculating optimal activity distribution...")
-        
-        # Calculate resource constraints
-        total_time_slots = len(self.get_available_slots())
-        total_teachers = len(self.teachers)
-        total_rooms = len(self.classrooms)
-        total_sections = len(self.sections)
-        
-        print(f"📊 Resource Analysis:")
-        print(f"   ⏰ Time slots: {total_time_slots}")
-        print(f"   👨‍🏫 Teachers: {total_teachers}")
-        print(f"   🏫 Rooms: {total_rooms}")
-        print(f"   📚 Sections: {total_sections}")
-        
-        # Calculate maximum possible activities
-        max_activities_by_time = total_time_slots
-        max_activities_by_teachers = total_teachers * total_time_slots
-        max_activities_by_rooms = total_rooms * total_time_slots
-        max_activities_by_sections = total_sections * total_time_slots
-        
-        # The bottleneck is the most limiting resource
-        max_possible_activities = min(max_activities_by_time, max_activities_by_teachers, 
-                                    max_activities_by_rooms, max_activities_by_sections)
-        
-        print(f"🎯 Maximum possible activities: {max_possible_activities}")
-        
-        # Calculate optimal subjects per section
-        optimal_subjects_per_section = max(1, min(5, max_possible_activities // total_sections))
-        print(f"📖 Optimal subjects per section: {optimal_subjects_per_section}")
+        """Create activities based on subject credits - EXACT credits = hours per week"""
+        print("🚀 Creating activities based on EXACT credits...")
         
         activities = []
         working_days = self.settings.get('working_days', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'])
+        if isinstance(working_days, str):
+            working_days = json.loads(working_days) if working_days.startswith('[') else ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
         
-        # Track resource usage to avoid over-allocation
+        # Track resource usage
         teacher_usage = defaultdict(int)
         room_usage = defaultdict(int)
-        section_usage = defaultdict(int)
+        
+        total_activities_created = 0
         
         for section in self.sections:
-            # Get relevant subjects/courses for this section
+            print(f"\n🎯 Processing {section.name} (dept: {getattr(section, 'department_id', 'None')})")
+            
+            # Get relevant subjects for this section
             if self.app_mode == 'school':
                 relevant_subjects = self.subjects_or_courses
             else:
                 relevant_subjects = []
-                for course in self.subjects_or_courses:
-                    if hasattr(course, 'department_id') and course.department_id == section.department_id:
-                        relevant_subjects.append(course)
+                if hasattr(section, 'department_id') and section.department_id:
+                    for course in self.subjects_or_courses:
+                        if hasattr(course, 'department_id') and course.department_id == section.department_id:
+                            relevant_subjects.append(course)
+                
                 if not relevant_subjects:
                     relevant_subjects = self.subjects_or_courses
             
-            # Shuffle subjects to add variety
-            random.shuffle(relevant_subjects)
+            print(f"  📚 Found {len(relevant_subjects)} subjects for this section")
             
-            # Create activities for this section (adaptive number)
-            subjects_created = 0
+            # Create activities based on EXACT credits (credits = hours per week)
+            section_activities = []
             for subject in relevant_subjects:
-                if subjects_created >= optimal_subjects_per_section:
-                    break
+                # Get credits for this subject
+                credits = getattr(subject, 'credits', 3)
+                if credits is None:
+                    credits = 3
                 
-                # Find a teacher who can teach this subject and isn't overused
-                suitable_teacher = None
-                for teacher in self.teachers:
-                    if (self.teacher_can_teach(teacher, subject) and 
-                        teacher_usage[teacher.id] < total_time_slots * 0.8):  # Max 80% usage
-                        suitable_teacher = teacher
-                        break
+                print(f"    📖 {subject.name}: {credits} credits = {credits} classes per week")
                 
-                if suitable_teacher:
-                    # Find a suitable classroom for this activity
-                    suitable_classroom = None
-                    for classroom in self.classrooms:
-                        if (classroom.capacity >= len(section.students) if hasattr(section, 'students') else True and
-                            room_usage[classroom.id] < total_time_slots * 0.8):  # Max 80% usage
-                            suitable_classroom = classroom
-                            break
+                # Create EXACTLY as many activities as credits
+                for class_num in range(credits):
+                    # Find a teacher who can teach this subject
+                    suitable_teacher = None
+                    for teacher in self.teachers:
+                        if self.teacher_can_teach(teacher, subject):
+                            # More lenient teacher limit - allow up to 30 classes per week
+                            if teacher_usage[teacher.id] < 30:
+                                suitable_teacher = teacher
+                                break
                     
-                    if suitable_classroom:
-                        activity_id = f"{section.id}_{suitable_teacher.id}_{suitable_classroom.id}_{subject.id}"
-                        
-                        activity = Activity(
-                            id=activity_id,
-                            section_id=section.id,
-                            teacher_id=suitable_teacher.id,
-                            subject_id=subject.id if self.app_mode == 'school' else None,
-                            course_id=subject.id if self.app_mode == 'college' else None,
-                            room_id=suitable_classroom.id,
-                            priority=random.randint(1, 5)
-                        )
-                        
-                        activities.append(activity)
-                        
-                        # Update usage tracking
-                        teacher_usage[suitable_teacher.id] += 1
-                        room_usage[suitable_classroom.id] += 1
-                        section_usage[section.id] += 1
-                        subjects_created += 1
+                    if not suitable_teacher:
+                        print(f"      ❌ No available teacher for {subject.name}")
+                        continue
+                    
+                    # Find a suitable classroom - distribute evenly
+                    def classroom_score(c):
+                        capacity_ok = c.capacity >= getattr(section, 'capacity', 30)
+                        usage_penalty = room_usage[c.id] * 2  # Light penalty for high usage
+                        capacity_penalty = 0 if capacity_ok else 1000
+                        return usage_penalty + capacity_penalty
+                    
+                    suitable_classroom = min(self.classrooms, key=classroom_score)
+                    
+                    # Create activity
+                    activity_id = f"{section.id}_{suitable_teacher.id}_{suitable_classroom.id}_{subject.id}_{class_num}"
+                    
+                    activity = Activity(
+                        id=activity_id,
+                        section_id=section.id,
+                        teacher_id=suitable_teacher.id,
+                        subject_id=subject.id if self.app_mode == 'school' else None,
+                        course_id=subject.id if self.app_mode == 'college' else None,
+                        room_id=suitable_classroom.id,
+                        priority=random.randint(1, 5)
+                    )
+                    
+                    section_activities.append(activity)
+                    total_activities_created += 1
+                    
+                    # Update usage tracking
+                    teacher_usage[suitable_teacher.id] += 1
+                    room_usage[suitable_classroom.id] += 1
+                    
+                    print(f"      ✅ Class {class_num + 1}: {subject.name} with {suitable_teacher.full_name} in {suitable_classroom.room_id}")
+            
+            activities.extend(section_activities)
+            print(f"  📊 Created {len(section_activities)} activities for {section.name}")
         
-        print(f"✅ Created {len(activities)} activities across {total_sections} sections")
-        print(f"📈 Average activities per section: {len(activities) / total_sections:.1f}")
+        print(f"\n✅ Total activities created: {total_activities_created}")
+        print(f"📈 Average activities per section: {total_activities_created / len(self.sections):.1f}")
+        
+        # Show activities per section
+        section_counts = {}
+        for activity in activities:
+            section_id = activity.section_id
+            section_counts[section_id] = section_counts.get(section_id, 0) + 1
+        
+        print(f"\n📊 Activities per section:")
+        for section_id, count in sorted(section_counts.items()):
+            section_name = next((s.name for s in self.sections if s.id == section_id), f"Section {section_id}")
+            print(f"  {section_name}: {count} activities")
         
         return activities
     
@@ -896,16 +915,48 @@ class TimetableGenerator:
         else:
             return hasattr(teacher, 'courses') and subject in teacher.courses
     
+    def get_subject_by_id(self, subject_id):
+        """Get subject/course by ID"""
+        if self.app_mode == 'school':
+            return next((s for s in self.subjects_or_courses if s.id == subject_id), None)
+        else:
+            return next((c for c in self.subjects_or_courses if c.id == subject_id), None)
+    
+    def get_section_by_id(self, section_id):
+        """Get section by ID"""
+        return next((s for s in self.sections if s.id == section_id), None)
+    
     def get_available_slots(self) -> List[TimeSlot]:
-        """Get all available time slots"""
+        """Get all available time slots - FIXED 60 slots with hardcoded lunch break"""
         slots = []
         working_days = self.settings.get('working_days', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'])
-        periods_per_day = 8
+        if isinstance(working_days, str):
+            working_days = json.loads(working_days) if working_days.startswith('[') else ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+        
+        # FIXED: 12 periods per day, 60 total slots (5 days × 12 periods)
+        periods_per_day = 12
+        
+        print(f"⏰ Using {periods_per_day} periods per day across {len(working_days)} days")
+        print(f"📊 Total time slots: {periods_per_day * len(working_days)}")
         
         for day in working_days:
             for period in range(1, periods_per_day + 1):
-                slots.append(TimeSlot(day, period, "", ""))
+                # Hardcoded schedule with lunch break
+                if period <= 4:  # Periods 1-4: 9:00-13:00
+                    start_hour = 8 + period
+                    start_time = f"{start_hour:02d}:00"
+                    end_time = f"{start_hour + 1:02d}:00"
+                elif period == 5:  # Lunch break: 13:00-14:00
+                    start_time = "13:00"
+                    end_time = "14:00"
+                else:  # Periods 6-12: 14:00-20:00
+                    start_hour = 13 + (period - 5)
+                    start_time = f"{start_hour:02d}:00"
+                    end_time = f"{start_hour + 1:02d}:00"
+                
+                slots.append(TimeSlot(day, period, start_time, end_time))
         
+        print(f"⏰ Available time slots: {len(slots)}")
         return slots
     
     def convert_to_timetable_entries(self, schedule: Dict[str, TimeSlot]) -> List[Dict]:
@@ -920,7 +971,7 @@ class TimetableGenerator:
             subject_course_id = int(parts[3])
             
             entry = {
-                'day': time_slot.day,
+                'day': time_slot.day[:10] if len(time_slot.day) > 10 else time_slot.day,  # Truncate if too long
                 'period': time_slot.period,
                 'teacher_id': teacher_id,
                 'section_id': section_id,
