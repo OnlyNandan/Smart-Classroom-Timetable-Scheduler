@@ -126,8 +126,8 @@ def generate_timetable():
 
         print(f"📚 Found {len(sections_with_students)} sections with students")
 
-        # Get all teachers
-        teachers = Teacher.query.all()
+        # Get all teachers with their course relationships loaded
+        teachers = Teacher.query.options(joinedload(Teacher.courses)).all()
         print(f"👨‍🏫 Found {len(teachers)} teachers")
 
         # Get all classrooms
