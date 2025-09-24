@@ -31,24 +31,29 @@
     <!-- At a Glance -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {% set cards = [
-            ('Total Students', stats.total_students, stats.students_growth, 'bg-blue-500/10 text-blue-400', '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'),
-            ('Active Teachers', stats.teachers, stats.teachers_growth, 'bg-yellow-500/10 text-yellow-400', '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'),
-            ('Classes Scheduled', stats.classes_scheduled, stats.scheduled_growth, 'bg-green-500/10 text-green-400', '<rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>'),
-            ('Subjects Active', stats.subjects, stats.subjects_growth, 'bg-orange-500/10 text-orange-400', '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>')
+            ('Total Students', 'total_students', 'bg-blue-500/10 text-blue-400', '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'),
+            ('Active Teachers', 'teachers', 'bg-yellow-500/10 text-yellow-400', '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'),
+            ('Classes Scheduled', 'classes_scheduled', 'bg-green-500/10 text-green-400', '<rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>'),
+            ('Subjects Active', 'subjects', 'bg-orange-500/10 text-orange-400', '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>')
         ] %}
-        {% for title, value, change, color, svg in cards %}
-        <div class="glass-card p-6 rounded-2xl">
+        {% for title, key, color, svg in cards %}
+        <div class="glass-card p-6 rounded-2xl" data-stat-key="{{ key }}">
             <div class="flex justify-between items-start">
                 <div class="space-y-1">
                     <p class="text-sm text-gray-400">{{ title }}</p>
-                    <p class="text-3xl font-bold text-white">{{ "{:,.0f}".format(value) }}</p>
-                    <div class="text-xs font-semibold {{ 'text-green-400' if change >= 0 else 'text-red-400' }}">
-                        {{ '+' if change >= 0 else '' }}{{ change }}%
+                    <p class="text-3xl font-bold text-white" data-value="{{ key }}">{{ "{:,.0f}".format(stats[key]) }}</p>
+                    <div class="text-xs font-semibold" data-growth="{{ key }}">
+                        <span class="text-green-400">+{{ stats[key + '_growth'] or 0 }}%</span>
                     </div>
                 </div>
                 <div class="w-10 h-10 rounded-lg flex items-center justify-center {{ color }}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">{{ svg|safe }}</svg>
                 </div>
+            </div>
+            <!-- Real-time indicator -->
+            <div class="mt-2 flex items-center gap-2">
+                <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse" data-indicator="{{ key }}"></div>
+                <span class="text-xs text-gray-500" data-timestamp="{{ key }}">Updated</span>
             </div>
         </div>
         {% endfor %}
@@ -114,16 +119,21 @@
         </h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
             {% set performance_data = [
-                ('Schedule Accuracy', performance.accuracy ~ '%', 'bg-green-500'),
-                ('Avg Generation Time', performance.gen_time ~ 's', 'bg-blue-500'),
-                ('System Uptime', performance.uptime ~ '%', 'bg-yellow-500')
+                ('Schedule Accuracy', 'accuracy', 'bg-green-500'),
+                ('Avg Generation Time', 'gen_time', 'bg-blue-500'),
+                ('System Uptime', 'uptime', 'bg-yellow-500')
             ] %}
-            {% for title, value, color in performance_data %}
-            <div>
+            {% for title, key, color in performance_data %}
+            <div data-perf-key="{{ key }}">
                 <p class="text-sm text-gray-400">{{ title }}</p>
-                <p class="text-3xl font-bold text-white mt-1">{{ value }}</p>
+                <p class="text-3xl font-bold text-white mt-1" data-perf-value="{{ key }}">{{ performance[key] }}{{ '%' if key != 'gen_time' else 's' }}</p>
                 <div class="w-full bg-gray-700 rounded-full h-1.5 mt-2">
-                    <div class="{{ color }} h-1.5 rounded-full" style="width: {{ value|replace('%','')|replace('s','')|float * 0.95 }}%"></div>
+                    <div class="{{ color }} h-1.5 rounded-full transition-all duration-500" data-perf-bar="{{ key }}" style="width: {{ performance[key] * 0.95 }}%"></div>
+                </div>
+                <!-- Real-time indicator -->
+                <div class="mt-1 flex items-center justify-center gap-1">
+                    <div class="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" data-perf-indicator="{{ key }}"></div>
+                    <span class="text-xs text-gray-500">Updated</span>
                 </div>
             </div>
             {% endfor %}
@@ -174,6 +184,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingModal = document.getElementById('loading-modal');
     const toast = document.getElementById('toast');
     
+    // Real-time updates
+    let updateInterval;
+    
+    // Start real-time updates
+    startRealTimeUpdates();
+    
     // Generate Timetable functionality
     generateBtn.addEventListener('click', async () => {
         showLoadingModal();
@@ -191,10 +207,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await response.json();
                 hideLoadingModal();
                 showToast('Timetable generated successfully!', 'success');
-                // Refresh the page to show updated statistics
-                setTimeout(() => {
-                    window.location.reload();
-                }, 2000);
+                // Refresh stats immediately after generation
+                updateDashboardStats();
             } else {
                 const error = await response.json();
                 throw new Error(error.message || 'Failed to generate timetable');
@@ -209,6 +223,102 @@ document.addEventListener('DOMContentLoaded', () => {
     scheduleExamsBtn.addEventListener('click', () => {
         window.location.href = '/exams';
     });
+    
+    function startRealTimeUpdates() {
+        // Update every 5 seconds
+        updateInterval = setInterval(updateDashboardStats, 5000);
+        
+        // Initial update
+        updateDashboardStats();
+    }
+    
+    async function updateDashboardStats() {
+        try {
+            const response = await fetch('/api/dashboard-stats');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    updateStatsDisplay(data.stats, data.performance);
+                    updateLastUpdateTime();
+                }
+            }
+        } catch (error) {
+            console.error('Failed to update dashboard stats:', error);
+        }
+    }
+    
+    function updateStatsDisplay(stats, performance) {
+        // Update stat values
+        Object.keys(stats).forEach(key => {
+            const valueElement = document.querySelector(`[data-value="${key}"]`);
+            if (valueElement) {
+                const oldValue = parseInt(valueElement.textContent.replace(/,/g, ''));
+                const newValue = stats[key];
+                
+                // Animate value change
+                animateValueChange(valueElement, oldValue, newValue);
+                
+                // Update growth percentage
+                const growthElement = document.querySelector(`[data-growth="${key}"] span`);
+                if (growthElement) {
+                    const growth = stats[key + '_growth'] || 0;
+                    const sign = growth >= 0 ? '+' : '';
+                    growthElement.textContent = `${sign}${growth}%`;
+                    growthElement.className = growth >= 0 ? 'text-green-400' : 'text-red-400';
+                }
+            }
+        });
+        
+        // Update performance metrics
+        Object.keys(performance).forEach(key => {
+            const valueElement = document.querySelector(`[data-perf-value="${key}"]`);
+            const barElement = document.querySelector(`[data-perf-bar="${key}"]`);
+            
+            if (valueElement) {
+                const suffix = key === 'gen_time' ? 's' : '%';
+                valueElement.textContent = `${performance[key]}${suffix}`;
+            }
+            
+            if (barElement) {
+                const width = performance[key] * 0.95;
+                barElement.style.width = `${width}%`;
+            }
+        });
+    }
+    
+    function animateValueChange(element, oldValue, newValue) {
+        if (oldValue === newValue) return;
+        
+        const duration = 1000;
+        const startTime = performance.now();
+        
+        function updateValue(currentTime) {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // Easing function for smooth animation
+            const easeOutCubic = 1 - Math.pow(1 - progress, 3);
+            const currentValue = Math.round(oldValue + (newValue - oldValue) * easeOutCubic);
+            
+            element.textContent = currentValue.toLocaleString();
+            
+            if (progress < 1) {
+                requestAnimationFrame(updateValue);
+            }
+        }
+        
+        requestAnimationFrame(updateValue);
+    }
+    
+    function updateLastUpdateTime() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString();
+        
+        // Update all timestamp elements
+        document.querySelectorAll('[data-timestamp]').forEach(element => {
+            element.textContent = `Updated ${timeString}`;
+        });
+    }
     
     function showLoadingModal() {
         loadingModal.classList.remove('hidden');
@@ -260,6 +370,13 @@ document.addEventListener('DOMContentLoaded', () => {
             toast.classList.add('hidden');
         }, 5000);
     }
+    
+    // Clean up interval when page unloads
+    window.addEventListener('beforeunload', () => {
+        if (updateInterval) {
+            clearInterval(updateInterval);
+        }
+    });
 });
 </script>
 {% endblock %}

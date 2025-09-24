@@ -94,11 +94,11 @@ createApp({
         const fetchData = async () => {
             if (appMode !== 'school') return;
             try {
-                const statusRes = await fetch("{{ url_for('handle_elective_status') }}");
+                const statusRes = await fetch("{{ url_for('electives.handle_elective_status') }}");
                 const statusData = await statusRes.json();
                 status.value = statusData.status;
 
-                const dataRes = await fetch("{{ url_for('get_electives_data') }}");
+                const dataRes = await fetch("{{ url_for('electives.get_electives_data') }}");
                 const data = await dataRes.json();
                 electives.value = data.electives;
                 students.value = data.students;
@@ -110,7 +110,7 @@ createApp({
         const toggleStatus = async () => {
             const newStatus = status.value === 'open' ? 'closed' : 'open';
             try {
-                const response = await fetch("{{ url_for('handle_elective_status') }}", {
+                const response = await fetch("{{ url_for('electives.handle_elective_status') }}", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ status: newStatus })

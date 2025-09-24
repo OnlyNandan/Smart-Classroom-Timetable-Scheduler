@@ -67,9 +67,19 @@
                 <!-- Right Column: Subjects -->
                 <div class="space-y-2 flex flex-col mt-4 md:mt-0">
                      <label class="block text-sm font-medium text-gray-300 mb-1">Teachable Subjects</label>
-                     <input type="text" id="subject-search" class="input-base flex-shrink-0" placeholder="Search subjects...">
-                     <div id="subjects-container" class="flex-grow overflow-y-auto bg-gray-900/50 p-3 rounded-md border border-gray-700 min-h-[200px]">
-                        <!-- Checkboxes will be dynamically inserted here -->
+                     <div class="relative">
+                         <input type="text" id="subject-search" class="input-base w-full pr-10" placeholder="Search subjects..." autocomplete="off">
+                         <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                             <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                             </svg>
+                         </div>
+                         <div id="subjects-dropdown" class="hidden absolute z-10 w-full mt-1 bg-gray-800 border border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                             <!-- Options will be dynamically inserted here -->
+                         </div>
+                     </div>
+                     <div id="selected-subjects" class="flex flex-wrap gap-2 min-h-[40px] p-2 bg-gray-900/50 rounded-md border border-gray-700">
+                         <!-- Selected subjects will be displayed here -->
                      </div>
                 </div>
             </div>
@@ -121,6 +131,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- State ---
     let teachers = [];
     let allSubjects = [];
+    let selectedSubjects = [];
+    let filteredSubjects = [];
 
     // --- API & Data ---
     async function apiRequest(endpoint, method = 'GET', body = null) {
@@ -147,6 +159,74 @@ document.addEventListener('DOMContentLoaded', () => {
         if (teachersData) teachers = teachersData.teachers;
         if (subjectsData) allSubjects = subjectsData.subjects;
         renderTable();
+    }
+
+    // --- Subject Dropdown Functions ---
+    function updateSubjectsDisplay() {
+        updateDropdown();
+        updateSelectedSubjects();
+    }
+
+    function updateDropdown() {
+        const dropdown = document.getElementById('subjects-dropdown');
+        const searchInput = document.getElementById('subject-search');
+        const searchTerm = searchInput.value.toLowerCase();
+        
+        // Filter subjects that are not already selected and match search term
+        const availableSubjects = allSubjects.filter(subject => 
+            !selectedSubjects.some(selected => selected.id === subject.id) &&
+            (subject.name.toLowerCase().includes(searchTerm) || subject.code.toLowerCase().includes(searchTerm))
+        );
+        
+        if (availableSubjects.length === 0) {
+            dropdown.innerHTML = '<div class="px-3 py-2 text-sm text-gray-500">No subjects found</div>';
+        } else {
+            dropdown.innerHTML = availableSubjects.map(subject => `
+                <div class="px-3 py-2 hover:bg-gray-700 cursor-pointer text-sm subject-option" data-subject-id="${subject.id}">
+                    <span class="font-medium">${subject.name}</span>
+                    <span class="text-xs text-gray-500 ml-2">(${subject.code})</span>
+                </div>
+            `).join('');
+        }
+        
+        // Show/hide dropdown based on search input focus and content
+        if (searchInput === document.activeElement && searchInput.value.length > 0) {
+            dropdown.classList.remove('hidden');
+        } else {
+            dropdown.classList.add('hidden');
+        }
+    }
+
+    function updateSelectedSubjects() {
+        const container = document.getElementById('selected-subjects');
+        if (selectedSubjects.length === 0) {
+            container.innerHTML = '<span class="text-sm text-gray-500">No subjects selected</span>';
+        } else {
+            container.innerHTML = selectedSubjects.map(subject => `
+                <span class="inline-flex items-center gap-1 px-2 py-1 bg-purple-600 text-white text-xs rounded-full">
+                    ${subject.name}
+                    <button type="button" class="remove-subject ml-1 hover:text-red-300" data-subject-id="${subject.id}">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </span>
+            `).join('');
+        }
+    }
+
+    function addSubject(subjectId) {
+        const subject = allSubjects.find(s => s.id == subjectId);
+        if (subject && !selectedSubjects.some(s => s.id == subjectId)) {
+            selectedSubjects.push(subject);
+            updateSubjectsDisplay();
+            document.getElementById('subject-search').value = '';
+        }
+    }
+
+    function removeSubject(subjectId) {
+        selectedSubjects = selectedSubjects.filter(s => s.id != subjectId);
+        updateSubjectsDisplay();
     }
 
     // --- Rendering & UI ---
@@ -198,17 +278,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         
-        // Populate and handle subjects
-        const subjectsContainer = document.getElementById('subjects-container');
-        subjectsContainer.innerHTML = '';
-        allSubjects.forEach(subject => {
-            const checked = !isNew && data.subjects.some(s => s.id === subject.id);
-            subjectsContainer.innerHTML += `
-                <label class="flex items-center gap-x-2 p-1.5 rounded hover:bg-gray-700 text-sm subject-label">
-                    <input type="checkbox" name="subject_ids" value="${subject.id}" ${checked ? 'checked' : ''} class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-600">
-                    <span class="subject-name">${subject.name}</span> <span class="text-xs text-gray-500">(${subject.code})</span>
-                </label>`;
-        });
+        // Initialize selected subjects
+        selectedSubjects = !isNew && data.subjects ? [...data.subjects] : [];
+        filteredSubjects = [...allSubjects];
+        
+        // Populate dropdown and selected subjects display
+        updateSubjectsDisplay();
 
 
         formModal.classList.remove('hidden');
@@ -227,13 +302,29 @@ document.addEventListener('DOMContentLoaded', () => {
     searchInput.addEventListener('input', (e) => renderTable(e.target.value.toLowerCase()));
     addTeacherBtn.addEventListener('click', () => showForm());
     
+    // Subject dropdown event listeners
+    document.addEventListener('click', (e) => {
+        if (e.target.id === 'subject-search') {
+            updateDropdown();
+        } else if (!e.target.closest('#subjects-dropdown') && !e.target.closest('#subject-search')) {
+            document.getElementById('subjects-dropdown').classList.add('hidden');
+        }
+    });
+
     formModal.addEventListener('input', (e) => {
         if (e.target.id === 'subject-search') {
-            const filter = e.target.value.toLowerCase();
-            document.querySelectorAll('.subject-label').forEach(label => {
-                const name = label.querySelector('.subject-name').textContent.toLowerCase();
-                label.style.display = name.includes(filter) ? '' : 'none';
-            });
+            updateDropdown();
+        }
+    });
+
+    formModal.addEventListener('click', (e) => {
+        if (e.target.classList.contains('subject-option')) {
+            const subjectId = e.target.dataset.subjectId;
+            addSubject(subjectId);
+        } else if (e.target.closest('.remove-subject')) {
+            const button = e.target.closest('.remove-subject');
+            const subjectId = button.dataset.subjectId;
+            removeSubject(subjectId);
         }
     });
 
@@ -241,7 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function saveForm(form, id) {
         const formData = new FormData(form);
         const payload = Object.fromEntries(formData.entries());
-        payload.subject_ids = formData.getAll('subject_ids').map(Number); // Get all checked subjects
+        payload.subject_ids = selectedSubjects.map(s => s.id); // Get selected subjects
 
         if (!id && !payload.password) {
             showToast('Password is required for new teachers.', 'error');

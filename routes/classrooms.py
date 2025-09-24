@@ -21,9 +21,21 @@ def handle_classrooms(classroom_id=None):
     try:
         if request.method == 'GET':
             classrooms = Classroom.query.order_by(Classroom.room_id).all()
-            return jsonify({"classrooms": [
-                {"id": c.id, "room_id": c.room_id, "capacity": c.capacity, "features": c.features or []} for c in classrooms
-            ]})
+            classroom_list = []
+            for c in classrooms:
+                # Handle features - if it's a string, split by comma; if it's already a list, use as is
+                if isinstance(c.features, str):
+                    features = [f.strip() for f in c.features.split(',') if f.strip()]
+                else:
+                    features = c.features or []
+                
+                classroom_list.append({
+                    "id": c.id, 
+                    "room_id": c.room_id, 
+                    "capacity": c.capacity, 
+                    "features": features
+                })
+            return jsonify({"classrooms": classroom_list})
 
         data = request.json
         if not data.get('room_id') or not data.get('capacity'):

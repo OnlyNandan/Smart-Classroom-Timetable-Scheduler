@@ -6,6 +6,7 @@ from sqlalchemy import exc
 from models import AppConfig, User, SchoolGroup, Grade, Stream, Subject, Semester, Department, Course, SystemMetric, ActivityLog, TimetableEntry
 from extensions import db
 from utils import hash_password, log_activity, calculate_growth, set_config
+from werkzeug.security import check_password_hash
 
 main_bp = Blueprint('main', __name__)
 
@@ -101,7 +102,7 @@ def login():
         return redirect(url_for('main.dashboard'))
     if request.method == 'POST':
         user = User.query.filter_by(username=request.form['username']).first()
-        if user and user.password == hash_password(request.form['password']):
+        if user and check_password_hash(user.password, request.form['password']):
             session['user_id'] = user.id
             session['username'] = user.username
             session['role'] = user.role
@@ -171,3 +172,49 @@ def dashboard():
     performance['uptime'] = 99.9
 
     return render_template('dashboard.html', stats=stats, activities=recent_activities, performance=performance)
+
+@main_bp.route('/api/dashboard-stats')
+def get_dashboard_stats():
+    """API endpoint for real-time dashboard statistics"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    
+    try:
+        # Get real-time statistics
+        stats = {
+            'teachers': User.query.filter_by(role='teacher').count(),
+            'total_students': User.query.filter_by(role='student').count(),
+            'classes_scheduled': TimetableEntry.query.count(),
+        }
+        if g.app_mode == 'school':
+            stats['subjects'] = Subject.query.count()
+        else:
+            stats['subjects'] = Course.query.count()
+
+        # Calculate growth percentages with fallback
+        stats['students_growth'] = calculate_growth('total_students', stats['total_students']) or 0
+        stats['teachers_growth'] = calculate_growth('total_teachers', stats['teachers']) or 0
+        stats['subjects_growth'] = calculate_growth('total_subjects', stats['subjects']) or 0
+        stats['scheduled_growth'] = calculate_growth('classes_scheduled', stats['classes_scheduled']) or 0
+
+        # Get performance metrics
+        accuracy_config = AppConfig.query.filter_by(key='last_schedule_accuracy').first()
+        gen_time_config = AppConfig.query.filter_by(key='last_generation_time').first()
+        
+        performance = {
+            'accuracy': float(accuracy_config.value) if accuracy_config else 95.0,
+            'gen_time': float(gen_time_config.value) if gen_time_config else 2.5,
+            'uptime': 99.9
+        }
+        
+        return jsonify({
+            'success': True,
+            'stats': stats,
+            'performance': performance,
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
