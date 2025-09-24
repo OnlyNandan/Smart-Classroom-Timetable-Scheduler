@@ -39,8 +39,9 @@ def clear_database():
         db.session.commit()
         
         # Delete teacher-course associations first
-        db.session.execute("DELETE FROM teacher_college_courses")
-        db.session.execute("DELETE FROM teacher_school_subjects")
+        from sqlalchemy import text
+        db.session.execute(text("DELETE FROM teacher_college_courses"))
+        db.session.execute(text("DELETE FROM teacher_school_subjects"))
         db.session.commit()
         
         # Delete teachers
@@ -340,7 +341,7 @@ def create_realistic_data():
         user = User(
             username=f"teacher{i+1:02d}",
             email=f"teacher{i+1:02d}@rvc.edu",
-            password="teacher123",  # Simple password for testing
+            password=generate_password_hash("teacher123"),  # Hashed password
             role="teacher"
         )
         db.session.add(user)
@@ -371,7 +372,7 @@ def create_realistic_data():
         user = User(
             username=f"student{i+1:03d}",
             email=f"student{i+1:03d}@rvc.edu",
-            password="student123",  # Simple password for testing
+            password=generate_password_hash("student123"),  # Hashed password
             role="student"
         )
         db.session.add(user)
@@ -393,22 +394,23 @@ def create_realistic_data():
     admin_user = User(
         username="admin",
         email="admin@rvc.edu",
-        password="admin123",  # Simple password for testing
+        password=generate_password_hash("admin123"),  # Hashed password
         role="admin"
     )
     db.session.add(admin_user)
     
     # Add AppConfig
     configs = [
-        ('app_name', 'RV College of Engineering'),
+        ('institute_name', 'RV College of Engineering'),
         ('app_mode', 'college'),
         ('working_days', '["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]'),
         ('start_time', '09:00'),
         ('end_time', '17:00'),
         ('period_duration', '60'),
-        ('break_duration', '30'),
-        ('max_classes_per_day', '8'),
-        ('setup_completed', 'true')
+        ('breaks', '[{"name": "Lunch Break", "start_time": "13:00", "end_time": "14:00"}]'),
+        ('setup_completed', 'true'),
+        ('last_schedule_accuracy', '95.0'),
+        ('last_generation_time', '2.5')
     ]
     
     for key, value in configs:
