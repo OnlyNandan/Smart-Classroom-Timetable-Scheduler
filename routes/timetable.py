@@ -59,7 +59,7 @@ def get_timetable_data():
             joinedload(TimetableEntry.teacher),
             joinedload(TimetableEntry.subject),
             joinedload(TimetableEntry.course),
-            joinedload(TimetableEntry.section),
+            joinedload(TimetableEntry.section).joinedload(StudentSection.department).joinedload(Department.semester),
             joinedload(TimetableEntry.classroom)
         ).all()
         
@@ -74,7 +74,9 @@ def get_timetable_data():
                 'section_id': entry.section_id,
                 'section': entry.section.name if entry.section else "Unknown",
                 'classroom_id': entry.classroom_id,
-                'classroom': entry.classroom.room_id if entry.classroom else "Unknown"
+                'classroom': entry.classroom.room_id if entry.classroom else "Unknown",
+                'semester_name': entry.section.department.semester.name if entry.section and entry.section.department and entry.section.department.semester else "Unknown",
+                'department_name': entry.section.department.name if entry.section and entry.section.department else "Unknown"
             }
             
             if g.app_mode == 'school' and entry.subject:
@@ -144,6 +146,281 @@ def get_classrooms():
         return jsonify({"error": "Failed to fetch classrooms"}), 500
 
 
+def generate_timetable_algorithm(sections, teachers, classrooms, subjects_or_courses, settings):
+    """Generate timetable using traditional algorithm instead of AI."""
+    print("🧮 Using algorithm-based timetable generation...")
+    
+    entries = []
+    working_days = settings.get('working_days', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'])
+    periods_per_day = 8  # Default 8 periods per day
+    
+    # Track assigned resources
+    assigned_teachers = {}  # {teacher_id: {day: [periods]}}
+    assigned_rooms = {}     # {room_id: {day: [periods]}}
+    assigned_times = set()  # {(day, period)}
+    
+    # Get available subjects/courses
+    available_subjects = subjects_or_courses
+    
+    for section in sections:
+        print(f"📚 Processing section: {section.name}")
+        
+        # Get teachers who can teach this section's subjects/courses
+        section_teachers = []
+        for teacher in teachers:
+            if g.app_mode == 'school':
+                if hasattr(teacher, 'subjects') and teacher.subjects:
+                    section_teachers.append(teacher)
+            else:
+                if hasattr(teacher, 'courses') and teacher.courses:
+                    section_teachers.append(teacher)
+        
+        # Get relevant subjects/courses for this section
+        if g.app_mode == 'school':
+            relevant_subjects = available_subjects
+        else:
+            relevant_subjects = []
+            for course in available_subjects:
+                if hasattr(course, 'department_id') and course.department_id == section.department_id:
+                    relevant_subjects.append(course)
+            if not relevant_subjects:
+                relevant_subjects = available_subjects
+        
+        # Generate timetable for this section
+        section_entries = generate_section_timetable(
+            section, section_teachers, classrooms, relevant_subjects, 
+            working_days, periods_per_day, assigned_teachers, assigned_rooms, assigned_times
+        )
+        
+        entries.extend(section_entries)
+        print(f"✅ Generated {len(section_entries)} entries for {section.name}")
+    
+    return entries
+
+def generate_section_timetable(section, teachers, classrooms, subjects, working_days, periods_per_day, assigned_teachers, assigned_rooms, assigned_times):
+    """Generate timetable for a single section using greedy algorithm."""
+    entries = []
+    
+    # Shuffle to add randomness
+    import random
+    random.shuffle(teachers)
+    random.shuffle(classrooms)
+    random.shuffle(subjects)
+    
+    for day in working_days:
+        for period in range(1, periods_per_day + 1):
+            # Skip if this time slot is already assigned
+            if (day, period) in assigned_times:
+                continue
+            
+            # Try to find a valid assignment
+            for teacher in teachers:
+                # Check if teacher is available at this time
+                if teacher.id in assigned_teachers:
+                    if day in assigned_teachers[teacher.id]:
+                        if period in assigned_teachers[teacher.id][day]:
+                            continue
+                
+                # Find a suitable subject/course for this teacher
+                suitable_subject = None
+                if g.app_mode == 'school':
+                    # For school mode, check if teacher teaches this subject
+                    for subject in subjects:
+                        if hasattr(teacher, 'subjects') and subject in teacher.subjects:
+                            suitable_subject = subject
+                            break
+                else:
+                    # For college mode, check if teacher teaches this course
+                    for course in subjects:
+                        if hasattr(teacher, 'courses') and course in teacher.courses:
+                            suitable_subject = course
+                            break
+                
+                if not suitable_subject:
+                    continue
+                
+                # Find an available classroom
+                for classroom in classrooms:
+                    # Check if classroom is available at this time
+                    if classroom.id in assigned_rooms:
+                        if day in assigned_rooms[classroom.id]:
+                            if period in assigned_rooms[classroom.id][day]:
+                                continue
+                    
+                    # Create timetable entry
+                    entry = {
+                        'day': day,
+                        'period': period,
+                        'teacher_id': teacher.id,
+                        'section_id': section.id,
+                        'classroom_id': classroom.id
+                    }
+                    
+                    if g.app_mode == 'school':
+                        entry['subject_id'] = suitable_subject.id
+                        entry['course_id'] = None
+                    else:
+                        entry['course_id'] = suitable_subject.id
+                        entry['subject_id'] = None
+                    
+                    entries.append(entry)
+                    
+                    # Update assigned resources
+                    if teacher.id not in assigned_teachers:
+                        assigned_teachers[teacher.id] = {}
+                    if day not in assigned_teachers[teacher.id]:
+                        assigned_teachers[teacher.id][day] = []
+                    assigned_teachers[teacher.id][day].append(period)
+                    
+                    if classroom.id not in assigned_rooms:
+                        assigned_rooms[classroom.id] = {}
+                    if day not in assigned_rooms[classroom.id]:
+                        assigned_rooms[classroom.id][day] = []
+                    assigned_rooms[classroom.id][day].append(period)
+                    
+                    assigned_times.add((day, period))
+                    
+                    # Break out of classroom loop
+                    break
+                
+                # Break out of teacher loop if we found a valid assignment
+                if (day, period) in assigned_times:
+                    break
+    
+    return entries
+
+def generate_individual_section_prompt(teachers, section, classrooms, subjects_or_courses, settings, assigned_resources):
+    """Generate a focused prompt for a single section with conflict tracking."""
+    print(f"📝 Generating individual prompt for section: {section.name}")
+    
+    # Get teachers who can teach this section's subjects/courses
+    section_teachers = []
+    for teacher in teachers:
+        if g.app_mode == 'school':
+            # For school mode, check if teacher teaches any subjects
+            if hasattr(teacher, 'subjects') and teacher.subjects:
+                section_teachers.append(teacher)
+        else:
+            # For college mode, check if teacher teaches any courses
+            if hasattr(teacher, 'courses') and teacher.courses:
+                section_teachers.append(teacher)
+    
+    # Get relevant subjects/courses for this section
+    if g.app_mode == 'school':
+        relevant_subjects = subjects_or_courses
+    else:
+        # For college mode, get courses relevant to this section's department
+        relevant_subjects = []
+        for course in subjects_or_courses:
+            if hasattr(course, 'department_id') and course.department_id == section.department_id:
+                relevant_subjects.append(course)
+        
+        # If no department-specific courses found, use all courses
+        if not relevant_subjects:
+            relevant_subjects = subjects_or_courses
+    
+    # Get available classrooms
+    available_classrooms = classrooms
+    
+    # Create focused data structures
+    teachers_data = []
+    for teacher in section_teachers:
+        teacher_info = {
+            'id': teacher.id,
+            'name': teacher.full_name,
+            'max_hours': teacher.max_weekly_hours,
+            'courses': [c.name for c in teacher.courses] if hasattr(teacher, 'courses') else [],
+            'subjects': [s.name for s in teacher.subjects] if hasattr(teacher, 'subjects') else []
+        }
+        teachers_data.append(teacher_info)
+    
+    section_data = {
+        'id': section.id,
+        'name': section.name,
+        'capacity': section.capacity,
+        'department': section.department.name if section.department else 'Unknown',
+        'semester': section.department.semester.name if section.department and section.department.semester else 'Unknown'
+    }
+    
+    classrooms_data = []
+    for classroom in available_classrooms:
+        classroom_info = {
+            'id': classroom.id,
+            'room_id': classroom.room_id,
+            'capacity': classroom.capacity,
+            'features': classroom.features.split(',') if classroom.features else []
+        }
+        classrooms_data.append(classroom_info)
+    
+    subjects_data = []
+    for subject in relevant_subjects:
+        subject_info = {
+            'id': subject.id,
+            'name': subject.name,
+            'code': subject.code if hasattr(subject, 'code') else '',
+            'credits': subject.credits if hasattr(subject, 'credits') else 0
+        }
+        subjects_data.append(subject_info)
+    
+    # Create conflict tracking context
+    assigned_teachers = assigned_resources.get('teachers', {})
+    assigned_rooms = assigned_resources.get('rooms', {})
+    assigned_times = assigned_resources.get('times', set())
+    
+    # Create focused prompt with conflict tracking
+    prompt = f"""You are a timetable scheduling assistant.
+We are generating timetables **one section at a time**.
+You must strictly follow the rules below.
+
+Rules:
+1. Generate the timetable only for Section: {section.name}.
+2. Each class should have exactly one subject and teacher in each time slot.
+3. Do not assign a teacher who is already scheduled in another section at that same time.
+4. Do not assign a classroom that is already occupied at that same time.
+5. Do not assign more than one class per time slot for this section.
+6. Use the available teachers, subjects, classrooms, and time slots provided.
+7. The timetable must be conflict-free across all sections.
+
+Context (taken resources so far):
+- Teachers already assigned: {assigned_teachers}
+- Rooms already assigned: {assigned_rooms}
+- Time slots already filled: {list(assigned_times)}
+
+SECTION DETAILS:
+{json.dumps(section_data, indent=2)}
+
+AVAILABLE TEACHERS ({len(teachers_data)}):
+{json.dumps(teachers_data, indent=2)}
+
+AVAILABLE CLASSROOMS ({len(classrooms_data)}):
+{json.dumps(classrooms_data, indent=2)}
+
+AVAILABLE {'SUBJECTS' if g.app_mode == 'school' else 'COURSES'} ({len(subjects_data)}):
+{json.dumps(subjects_data, indent=2)}
+
+SCHEDULE SETTINGS:
+- Working Days: {', '.join(settings.get('working_days', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']))}
+- Start Time: {settings.get('start_time', '09:00')}
+- End Time: {settings.get('end_time', '17:00')}
+- Period Duration: {settings.get('period_duration', 50)} minutes
+
+REQUIREMENTS:
+1. Generate 5-8 periods per day for each working day
+2. Each teacher can only teach subjects/courses they are assigned to
+3. No teacher can teach multiple sections at the same time
+4. Each classroom can only be used by one section at a time
+5. Use ONLY the exact IDs provided above - do not invent or modify any IDs
+6. Avoid conflicts with already assigned resources
+7. CRITICAL: Only use course_id values that exist in the courses list above
+
+OUTPUT: JSON array with day, period, teacher_id, section_id, classroom_id, {'subject_id' if g.app_mode == 'school' else 'course_id'}
+
+VALID COURSE IDs TO USE: {[c.id for c in subjects_or_courses] if g.app_mode == 'college' else 'N/A'}
+
+Generate complete timetable for {section.name}:"""
+    
+    return prompt
+
 def generate_gemini_prompt(teachers, sections, classrooms, subjects_or_courses, settings):
     """Generate sophisticated prompt for Gemini API to create realistic timetable."""
     
@@ -185,19 +462,27 @@ def generate_gemini_prompt(teachers, sections, classrooms, subjects_or_courses, 
             'age_group': 'primary' if is_primary else 'secondary',
             'max_periods_per_day': 6 if is_primary else 8,
             'preferred_end_time': '13:30' if is_primary else '16:00',
-            'needs_homeroom_teacher': is_primary
+            'needs_homeroom_teacher': is_primary,
+            'department_id': section.department_id,
+            'department_name': section.department.name if section.department else None,
+            'semester_id': section.department.semester_id if section.department else None,
+            'semester_name': section.department.semester.name if section.department and section.department.semester else None
         }
         sections_data.append(section_info)
     
     # Enhanced classroom data with specialized features
     classrooms_data = []
     for classroom in classrooms:
+        # Process features properly - it's a string, not a list
+        features_str = str(classroom.features or '')
+        features_list = [f.strip() for f in features_str.split(',') if f.strip()] if features_str else []
+        
         classroom_info = {
             'id': classroom.id,
             'room_id': classroom.room_id,
             'capacity': classroom.capacity,
-            'features': classroom.features or [],
-            'type': 'lab' if 'lab' in str(classroom.features or '').lower() else 'regular',
+            'features': features_list,
+            'type': 'lab' if 'lab' in features_str.lower() else 'regular',
             'floor': classroom.room_id[-1] if classroom.room_id and classroom.room_id[-1].isdigit() else '1'
         }
         classrooms_data.append(classroom_info)
@@ -243,24 +528,63 @@ PERIOD DURATION: {settings.get('period_duration', 45)} minutes
 TEACHERS ({len(teachers_data)}):
 {json.dumps(teachers_data, indent=2)}
 
+IMPORTANT: The teacher IDs above are the ONLY valid teacher IDs. Use these exact IDs in your timetable entries.
+
 STUDENT SECTIONS ({len(sections_data)}):
 {json.dumps(sections_data, indent=2)}
+
+IMPORTANT: The section IDs above are the ONLY valid section IDs. Use these exact IDs in your timetable entries.
 
 CLASSROOMS ({len(classrooms_data)}):
 {json.dumps(classrooms_data, indent=2)}
 
+IMPORTANT: The classroom IDs above are the ONLY valid classroom IDs. Use these exact IDs in your timetable entries.
+
 SUBJECTS/COURSES ({len(subjects_data)}):
 {json.dumps(subjects_data, indent=2)}
 
+IMPORTANT: The subject/course IDs above are the ONLY valid subject/course IDs. Use these exact IDs in your timetable entries.
+
 CRITICAL REAL-WORLD CONSTRAINTS:
 
-1. TEACHER CONSISTENCY & RELATIONSHIPS:
+1. TEACHER-SUBJECT ASSIGNMENT (ABSOLUTELY CRITICAL):
+   - Teachers can ONLY teach subjects/courses they are explicitly assigned to
+   - Check each teacher's 'assigned_courses' and 'assigned_subjects' arrays
+   - If a teacher is not assigned to a subject/course, they CANNOT teach it under any circumstances
+   - Example: If Teacher A is only assigned to "DS" course, they can ONLY teach DS to sections that have DS
+   - Do not assign teachers to subjects they are not qualified/assigned to teach
+
+2. SEMESTER-DEPARTMENT-SUBJECT MAPPING (CRITICAL):
+   - Each section belongs to a specific semester and department
+   - Only assign subjects/courses that are relevant to that semester-department combination
+   - Example: If "DS" course exists only for "SEM 1 Electronics" students, only assign DS to those sections
+   - Do not assign irrelevant subjects to sections
+
+3. SECTION-SPECIFIC TIMETABLES (CRITICAL):
+   - Generate SEPARATE timetables for EACH section - no sharing of periods between sections
+   - Each section must have its own complete weekly schedule
+   - Sections can have different subjects/courses based on their department/semester
+   - NO conflicts between sections - each section operates independently
+
+4. ROOM CONFLICT AVOIDANCE (CRITICAL):
+   - Each classroom can only be used by ONE section at a time
+   - Check classroom capacity matches section size
+   - Distribute classroom usage evenly across all sections
+   - Ensure no double-booking of classrooms
+
+5. SEMESTER-DEPARTMENT-SECTION HIERARCHY:
+   - Organize timetable by semester → department → section structure
+   - Each section belongs to a specific department
+   - Each department belongs to a specific semester
+   - Create separate timetables for each section within its department
+
+3. TEACHER CONSISTENCY & RELATIONSHIPS:
    - Same teacher should teach the same subject to the same section throughout the week
    - Maintain teacher-student relationships for better learning outcomes
    - Senior teachers (high max_hours) should handle core subjects in morning periods
    - Junior teachers can handle afternoon periods and electives
 
-2. AGE-APPROPRIATE SCHEDULING:
+4. AGE-APPROPRIATE SCHEDULING:
    - Primary students (UKG-5th): Maximum 6 periods/day, finish by 1:30 PM
    - Secondary students: Can have 8 periods/day, finish by 4:00 PM
    - Primary students need homeroom teachers for pastoral care
@@ -304,18 +628,39 @@ OUTPUT FORMAT:
 Return a JSON array of timetable entries. Each entry must have:
 - day: string (Monday, Tuesday, etc.)
 - period: integer (1, 2, 3, etc.)
-- teacher_id: integer
-- section_id: integer
-- classroom_id: integer
-- subject_id: integer (for school mode)
-- course_id: integer (for college mode)
+- teacher_id: integer (MUST use exact teacher IDs from the teachers data above)
+- section_id: integer (MUST use exact section IDs from the sections data above)
+- classroom_id: integer (MUST use exact classroom IDs from the classrooms data above)
+- subject_id: integer (for school mode - MUST use exact subject IDs from subjects data)
+- course_id: integer (for college mode - MUST use exact course IDs from courses data)
+
+CRITICAL: Use ONLY the exact IDs provided in the data above. Do not invent or modify IDs.
+
+EXPECTED OUTPUT SIZE: You should generate approximately {len(sections_data) * 5 * 5} entries (50 sections × 5 days × 5 periods per day = ~1250 entries). If you generate fewer entries, the timetable will be incomplete.
+
+BREAK PERIODS:
+- Break periods are automatically handled by the system
+- Do NOT include break periods in your JSON output
+- Only include actual class periods (1, 2, 3, etc.)
+- The system will automatically insert break periods between regular periods
+
+TIMETABLE GENERATION REQUIREMENTS:
+- Generate timetables for ALL {len(sections_data)} sections (one timetable per section)
+- CRITICAL: You must generate at least 5-8 periods per section for each day
+- CRITICAL: Generate entries for ALL {len(sections_data)} sections, not just 2-3 sections
+- Each section must have a complete weekly schedule
+- NO section conflicts - each section operates independently
+- NO room conflicts - each classroom can only be used by one section at a time
+- Distribute teachers and classrooms evenly across all sections
+- Ensure each section gets appropriate subjects/courses for their department/semester
 
 IMPORTANT: This timetable will be used for the ENTIRE ACADEMIC YEAR. Ensure:
 - Teacher assignments are consistent and sustainable
 - Student learning patterns are optimized
 - Teacher workload is balanced and realistic
-- Classroom utilization is efficient
+- Classroom utilization is efficient across all sections
 - The schedule reflects real-world educational best practices
+- All {len(sections_data)} sections have complete, conflict-free timetables
 
 Return ONLY the JSON array, no additional text or explanations.
 """
@@ -346,10 +691,10 @@ def call_gemini_api(prompt, max_retries=3):
         "contents": [{
             "parts": [{
                 "text": prompt
+                }]
             }]
-        }]
-    }
-    
+        }
+        
     # Check payload size before making request
     payload_size = len(json.dumps(data))
     print(f"📦 Payload size: {payload_size} characters")
@@ -439,6 +784,7 @@ def call_gemini_api(prompt, max_retries=3):
                 print("✅ Found candidates in response")
                 content = result['candidates'][0]['content']['parts'][0]['text']
                 print(f"📝 Content length: {len(content)} characters")
+                print(f"📝 First 200 chars: {content[:200]}")
                 
                 # Clean up the response to extract JSON
                 content = content.strip()
@@ -448,11 +794,108 @@ def call_gemini_api(prompt, max_retries=3):
                     content = content[:-3]
                 
                 print("🔄 Parsing JSON response...")
-                parsed_result = json.loads(content)
-                print(f"✅ Successfully parsed JSON with {len(parsed_result)} entries")
-                log_activity('info', f'Successfully received and parsed Gemini response with {len(parsed_result)} entries')
                 
-                return parsed_result
+                # Check if response is HTML (error page)
+                if content.strip().startswith('<!doctype') or content.strip().startswith('<html'):
+                    print("❌ Received HTML response instead of JSON - likely API error")
+                    raise ValueError("API returned HTML error page instead of JSON response")
+                
+                try:
+                    parsed_result = json.loads(content)
+                    print(f"✅ Successfully parsed JSON with {len(parsed_result)} entries")
+                    log_activity('info', f'Successfully received and parsed Gemini response with {len(parsed_result)} entries')
+                    return parsed_result
+                except json.JSONDecodeError as e:
+                    print(f"❌ JSON parsing failed: {e}")
+                    print(f"📝 Content length: {len(content)} characters")
+                    print(f"📝 First 500 chars: {content[:500]}")
+                    print(f"📝 Last 500 chars: {content[-500:]}")
+                
+                # Try to fix truncated JSON
+                fixed_content = content.strip()
+                
+                # Find the last complete JSON object
+                if fixed_content.startswith('['):
+                    # Find the last complete entry
+                    last_complete = fixed_content.rfind('}')
+                    if last_complete > 0:
+                        # Find the start of the last entry
+                        last_entry_start = fixed_content.rfind('{', 0, last_complete)
+                        if last_entry_start > 0:
+                            # Check if the last entry is complete
+                            last_entry = fixed_content[last_entry_start:last_complete + 1]
+                            if last_entry.count('{') == last_entry.count('}'):
+                                # Last entry is complete, truncate there
+                                fixed_content = fixed_content[:last_complete + 1] + ']'
+                            else:
+                                # Last entry is incomplete, remove it
+                                fixed_content = fixed_content[:last_entry_start] + ']'
+                        else:
+                            fixed_content = '[]'
+                    else:
+                        fixed_content = '[]'
+                
+                # Remove trailing commas
+                if fixed_content.endswith(','):
+                    fixed_content = fixed_content[:-1]
+                
+                # Ensure proper closing
+                if not fixed_content.endswith(']'):
+                    fixed_content = fixed_content + ']'
+                
+                try:
+                    parsed_result = json.loads(fixed_content)
+                    print(f"✅ Successfully parsed fixed JSON with {len(parsed_result)} entries")
+                    log_activity('info', f'Successfully parsed fixed JSON response with {len(parsed_result)} entries')
+                    return parsed_result
+                except json.JSONDecodeError as e2:
+                    print(f"❌ Fixed JSON still failed: {e2}")
+                    # Last resort: try to extract individual entries using regex
+                    try:
+                        import re
+                        entries = []
+                        
+                        # Find all complete JSON objects using regex
+                        pattern = r'\{[^{}]*"day"[^{}]*"period"[^{}]*"teacher_id"[^{}]*"section_id"[^{}]*"classroom_id"[^{}]*"course_id"[^{}]*\}'
+                        matches = re.findall(pattern, content)
+                        
+                        for match in matches:
+                            try:
+                                entry = json.loads(match)
+                                entries.append(entry)
+                            except:
+                                continue
+                        
+                        if entries:
+                            print(f"✅ Successfully extracted {len(entries)} entries from truncated response using regex")
+                            return entries
+                        else:
+                            # Try simpler approach - split by lines and parse each
+                            lines = content.split('\n')
+                            for line in lines:
+                                line = line.strip()
+                                if line.startswith('{') and line.endswith('},'):
+                                    line = line[:-1]  # Remove trailing comma
+                                elif line.startswith('{') and not line.endswith('}'):
+                                    continue  # Skip incomplete lines
+                                
+                                try:
+                                    entry = json.loads(line)
+                                    entries.append(entry)
+                                except:
+                                    continue
+                            
+                            if entries:
+                                print(f"✅ Successfully extracted {len(entries)} entries from truncated response using line parsing")
+                                return entries
+                            else:
+                                raise ValueError(f"Could not extract any valid entries from truncated response")
+                    except Exception as e3:
+                        print(f"❌ Entry extraction failed: {e3}")
+                        raise ValueError(f"Invalid JSON response from Gemini API (truncated): {e}")
+            elif 'error' in result:
+                print(f"❌ API Error: {result['error']}")
+                raise ValueError(f"Gemini API Error: {result['error']}")
             else:
                 print("❌ No valid candidates in response")
                 print(f"📄 Full response: {result}")
@@ -511,7 +954,7 @@ def test_gemini_api():
             "message": "Gemini API connection successful",
             "response": result
         })
-        
+            
     except Exception as e:
         return jsonify({
             "success": False,
@@ -560,68 +1003,181 @@ def generate_timetable():
         print("⚙️ Loading settings...")
         settings = {item.key: item.value for item in AppConfig.query.all()}
         settings['breaks'] = json.loads(settings.get('breaks', '[]'))
-        settings['working_days'] = json.loads(settings.get('working_days', '[]'))
+        # Parse working days from string to list
+        working_days_raw = settings.get('working_days', 'Monday - Friday')
+        if working_days_raw.startswith('['):
+            try:
+                working_days = json.loads(working_days_raw)
+            except json.JSONDecodeError:
+                working_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+        else:
+            if 'Monday - Friday' in working_days_raw:
+                working_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+            elif 'Monday - Saturday' in working_days_raw:
+                working_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+            else:
+                working_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+        settings['working_days'] = working_days
         print(f"📋 Settings loaded: {len(settings)} items")
         
-        print("📝 Generating AI prompt...")
-        # Generate prompt and call Gemini API
-        prompt = generate_gemini_prompt(teachers, sections, classrooms, subjects_or_courses, settings)
-        print(f"📄 Prompt generated: {len(prompt)} characters")
+        # Filter sections that have students
+        sections_with_students = []
+        for section in sections:
+            student_count = len(section.students) if hasattr(section, 'students') else 0
+            if student_count > 0:
+                sections_with_students.append(section)
+                print(f"📚 Section {section.name} has {student_count} students")
         
-        print("🤖 Calling Gemini API...")
-        schedule = call_gemini_api(prompt)
-        print(f"✅ Received schedule from AI: {len(schedule) if schedule else 0} entries")
+        print(f"🎯 Found {len(sections_with_students)} sections with students")
         
-        if schedule and isinstance(schedule, list):
-            # Clear existing timetable
-            TimetableEntry.query.delete()
+        if not sections_with_students:
+            return jsonify({"message": "No sections with students found"}), 400
+        
+        # Clear existing timetable entries
+        TimetableEntry.query.delete()
+        db.session.commit()
+        
+        total_saved = 0
+        
+        # Track assigned resources to prevent conflicts
+        assigned_resources = {
+            'teachers': {},  # {teacher_id: {day: [periods]}}
+            'rooms': {},     # {room_id: {day: [periods]}}
+            'times': set()   # {(day, period)}
+        }
+        
+        # Generate timetable using advanced hybrid algorithm
+        print(f"🚀 Generating timetables for {len(sections_with_students)} sections using hybrid algorithm...")
+        
+        # Import the advanced generator
+        from advanced_timetable_generator import TimetableGenerator
+        
+        # Create advanced generator
+        generator = TimetableGenerator(sections_with_students, teachers, classrooms, subjects_or_courses, settings, g.app_mode)
+        
+        # Generate timetable using hybrid approach
+        algorithm_entries = generator.generate()
+        print(f"✅ Hybrid algorithm generated {len(algorithm_entries)} entries")
+        
+        # Process algorithm-generated entries
+        for entry_data in algorithm_entries:
+            # Validate required fields
+            required_fields = ['day', 'period', 'teacher_id', 'section_id', 'classroom_id']
+            if not all(field in entry_data for field in required_fields):
+                continue
             
-            # Add new entries
-            for entry_data in schedule:
-                # Validate required fields
-                required_fields = ['day', 'period', 'teacher_id', 'section_id', 'classroom_id']
-                if not all(field in entry_data for field in required_fields):
+            # Set subject/course ID based on mode
+            if g.app_mode == 'school':
+                entry_data['course_id'] = None
+                if 'subject_id' not in entry_data:
                     continue
-                
-                # Set subject/course ID based on mode
-                if g.app_mode == 'school':
-                    entry_data['course_id'] = None
-                    if 'subject_id' not in entry_data:
-                        continue
-                else:
-                    if 'course_id' not in entry_data:
-                        continue
-                    entry_data.pop('subject_id', None)
-                
-                # Filter out any invalid fields that don't exist in the model
-                valid_fields = ['day', 'period', 'teacher_id', 'subject_id', 'course_id', 'section_id', 'classroom_id']
-                filtered_data = {k: v for k, v in entry_data.items() if k in valid_fields}
-                
-                # Validate day field length (max 10 characters)
-                if 'day' in filtered_data and len(str(filtered_data['day'])) > 10:
-                    print(f"⚠️ Day field too long: {filtered_data['day']}, truncating...")
-                    filtered_data['day'] = str(filtered_data['day'])[:10]
-                
-                # Validate period is integer
-                if 'period' in filtered_data:
-                    try:
-                        filtered_data['period'] = int(filtered_data['period'])
-                    except (ValueError, TypeError):
-                        print(f"⚠️ Invalid period: {filtered_data['period']}, skipping entry")
-                        continue
-                
-                print(f"📝 Creating timetable entry: {filtered_data}")
-                db.session.add(TimetableEntry(**filtered_data))
+            else:
+                entry_data['subject_id'] = None
+                if 'course_id' not in entry_data:
+                    continue
             
-            gen_time = round(time.time() - start_time, 2)
-            set_config('last_generation_time', gen_time)
-            set_config('last_schedule_accuracy', round(random.uniform(95.0, 99.8), 1))
+            # Check for conflicts before adding
+            day = entry_data['day']
+            period = entry_data['period']
+            teacher_id = entry_data['teacher_id']
+            classroom_id = entry_data['classroom_id']
+            
+            # Check teacher conflict
+            if teacher_id in assigned_resources['teachers']:
+                if day in assigned_resources['teachers'][teacher_id]:
+                    if period in assigned_resources['teachers'][teacher_id][day]:
+                        print(f"⚠️ Teacher {teacher_id} already assigned to {day} period {period}, skipping")
+                        continue
+            else:
+                assigned_resources['teachers'][teacher_id] = {}
+            
+            # Check classroom conflict
+            if classroom_id in assigned_resources['rooms']:
+                if day in assigned_resources['rooms'][classroom_id]:
+                    if period in assigned_resources['rooms'][classroom_id][day]:
+                        print(f"⚠️ Classroom {classroom_id} already assigned to {day} period {period}, skipping")
+                        continue
+            else:
+                assigned_resources['rooms'][classroom_id] = {}
+            
+            # Check time slot conflict
+            time_key = (day, period)
+            if time_key in assigned_resources['times']:
+                print(f"⚠️ Time slot {day} period {period} already assigned, skipping")
+                continue
+            
+            # Validate IDs exist in database
+            if not Teacher.query.get(teacher_id):
+                print(f"⚠️ Teacher {teacher_id} not found, skipping")
+                continue
+            if not Classroom.query.get(classroom_id):
+                print(f"⚠️ Classroom {classroom_id} not found, skipping")
+                continue
+            if not StudentSection.query.get(entry_data['section_id']):
+                print(f"⚠️ Section {entry_data['section_id']} not found, skipping")
+                continue
+            
+            # Validate course_id exists (for college mode)
+            if g.app_mode == 'college' and 'course_id' in entry_data and entry_data['course_id']:
+                if not Course.query.get(entry_data['course_id']):
+                    print(f"⚠️ Course {entry_data['course_id']} not found, skipping")
+                    continue
+            
+            # Validate subject_id exists (for school mode)
+            if g.app_mode == 'school' and 'subject_id' in entry_data and entry_data['subject_id']:
+                if not Subject.query.get(entry_data['subject_id']):
+                    print(f"⚠️ Subject {entry_data['subject_id']} not found, skipping")
+                    continue
+            
+            # Add to conflict tracking
+            if day not in assigned_resources['teachers'][teacher_id]:
+                assigned_resources['teachers'][teacher_id][day] = []
+            assigned_resources['teachers'][teacher_id][day].append(period)
+            
+            if day not in assigned_resources['rooms'][classroom_id]:
+                assigned_resources['rooms'][classroom_id][day] = []
+            assigned_resources['rooms'][classroom_id][day].append(period)
+            
+            assigned_resources['times'].add(time_key)
+            
+            # Filter out invalid fields
+            valid_fields = ['day', 'period', 'teacher_id', 'subject_id', 'course_id', 'section_id', 'classroom_id']
+            filtered_data = {k: v for k, v in entry_data.items() if k in valid_fields}
+            
+            # Validate day field length
+            if len(filtered_data['day']) > 10:
+                filtered_data['day'] = filtered_data['day'][:10]
+            
+            # Validate period field
+            try:
+                filtered_data['period'] = int(filtered_data['period'])
+            except (ValueError, TypeError):
+                print(f"⚠️ Invalid period {filtered_data['period']}, skipping")
+                continue
+            
+            # Create timetable entry
+            db.session.add(TimetableEntry(**filtered_data))
+            total_saved += 1
+        
+        print(f"✅ Processed {len(algorithm_entries)} entries from algorithm")
+        
+        # Commit all changes
+        try:
             db.session.commit()
+            print(f"🎉 Successfully generated timetable with {total_saved} entries")
+            log_activity('info', f'Successfully generated timetable with {total_saved} entries')
             
-            log_activity('info', f'New timetable generated by Gemini AI in {gen_time}s')
-            return jsonify({'message': f'Timetable generated successfully in {gen_time}s!'})
-        else:
-            raise ValueError("Invalid response from Gemini API")
+            return jsonify({
+                "message": f"Timetable generated successfully with {total_saved} entries",
+                "entries_count": total_saved,
+                "sections_processed": len(sections_with_students)
+            })
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ Error saving timetable: {e}")
+            log_activity('error', f'Error saving timetable: {e}')
+            return jsonify({"error": f"Failed to save timetable: {e}"}), 500
             
     except Exception as e:
         import traceback
