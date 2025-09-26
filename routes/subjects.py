@@ -6,6 +6,8 @@ from models import SchoolGroup, Semester, Subject, Course
 from utils import log_activity
 
 subjects_bp = Blueprint('subjects', __name__, url_prefix='/subjects')
+# API-prefixed blueprint to serve endpoints under /api/subjects
+subjects_api_bp = Blueprint('subjects_api', __name__, url_prefix='/api/subjects')
 
 @subjects_bp.route('/')
 def manage_subjects():
@@ -14,6 +16,7 @@ def manage_subjects():
     return render_template('subjects.html')
 
 @subjects_bp.route('/api/parents/<mode>', methods=['GET'])
+@subjects_api_bp.route('/parents/<mode>', methods=['GET'])
 def get_parent_data(mode):
     if 'user_id' not in session:
         return jsonify({"message": "Unauthorized"}), 401
@@ -38,6 +41,7 @@ def get_parent_data(mode):
     return jsonify({"parents": parents})
 
 @subjects_bp.route('/api/<mode>', methods=['GET'])
+@subjects_api_bp.route('/<mode>', methods=['GET'])
 def get_subjects_data(mode):
     if 'user_id' not in session:
         return jsonify({"message": "Unauthorized"}), 401
@@ -60,6 +64,8 @@ def get_subjects_data(mode):
 
 @subjects_bp.route('/api/<mode>', methods=['POST'])
 @subjects_bp.route('/api/<mode>/<int:item_id>', methods=['PUT', 'DELETE'])
+@subjects_api_bp.route('/<mode>', methods=['POST'])
+@subjects_api_bp.route('/<mode>/<int:item_id>', methods=['PUT', 'DELETE'])
 def handle_subjects(mode, item_id=None):
     if 'user_id' not in session:
         return jsonify({"message": "Unauthorized"}), 401

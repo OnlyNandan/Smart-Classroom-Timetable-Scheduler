@@ -21,12 +21,24 @@ def view_timetable():
         return redirect(url_for('main.login'))
     
     # Pass settings needed to build the timetable grid on the frontend
+    def _get_config_value(key, default=None):
+        item = AppConfig.query.filter_by(key=key).first()
+        return item.value if item and item.value is not None else default
+
+    def _safe_json_load(value, fallback):
+        try:
+            if value is None or value == "":
+                return fallback
+            return json.loads(value)
+        except Exception:
+            return fallback
+
     settings = {
-        'start_time': AppConfig.query.filter_by(key='start_time').first().value,
-        'end_time': AppConfig.query.filter_by(key='end_time').first().value,
-        'period_duration': AppConfig.query.filter_by(key='period_duration').first().value,
-        'working_days': json.loads(AppConfig.query.filter_by(key='working_days').first().value),
-        'breaks': json.loads(AppConfig.query.filter_by(key='breaks').first().value),
+        'start_time': _get_config_value('start_time', '09:00'),
+        'end_time': _get_config_value('end_time', '17:00'),
+        'period_duration': _get_config_value('period_duration', '60'),
+        'working_days': _safe_json_load(_get_config_value('working_days', '[]'), []),
+        'breaks': _safe_json_load(_get_config_value('breaks', '[]'), []),
     }
     return render_template('timetable.html', settings=settings)
 

@@ -6,6 +6,8 @@ from models import User, Teacher, Subject, Course
 from utils import hash_password, log_activity
 
 staff_bp = Blueprint('staff', __name__, url_prefix='/staff')
+# API-prefixed blueprint to serve endpoints under /api/staff
+staff_api_bp = Blueprint('staff_api', __name__, url_prefix='/api/staff')
 
 @staff_bp.route('/')
 def manage_staff():
@@ -14,6 +16,7 @@ def manage_staff():
     return render_template('staff.html')
 
 @staff_bp.route('/api/all_subjects', methods=['GET'])
+@staff_api_bp.route('/all_subjects', methods=['GET'])
 def get_all_subjects_for_staff():
     if 'user_id' not in session:
         return jsonify({"message": "Unauthorized"}), 401
@@ -30,6 +33,8 @@ def get_all_subjects_for_staff():
 
 @staff_bp.route('/api', methods=['GET', 'POST'])
 @staff_bp.route('/api/<int:teacher_id>', methods=['PUT', 'DELETE'])
+@staff_api_bp.route('', methods=['GET', 'POST'])
+@staff_api_bp.route('/<int:teacher_id>', methods=['PUT', 'DELETE'])
 def handle_staff(teacher_id=None):
     if 'user_id' not in session:
         return jsonify({"message": "Unauthorized"}), 401

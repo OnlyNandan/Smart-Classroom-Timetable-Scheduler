@@ -2,6 +2,8 @@ import os
 import json
 from datetime import datetime, timezone
 from flask import Flask, request, redirect, url_for, g
+import logging
+import json
 
 from config import Config
 from extensions import db
@@ -12,25 +14,47 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
+    # Structured request logging and JSON decode error handler
+    logging.basicConfig(level=logging.INFO)
+
+    @app.errorhandler(json.JSONDecodeError)
+    def _handle_json_decode(err):
+        body = request.get_data(cache=False)[:200]
+        return ({"error": "invalid_json", "message": str(err), "method": request.method,
+                 "path": request.path, "content_type": request.headers.get("Content-Type"),
+                 "body_first_200": body.decode(errors="replace")}, 400)
+
+    @app.before_request
+    def _log_request():
+        body_preview = request.get_data(cache=True)[:200]
+        app.logger.info("REQ %s %s qs=%r ct=%r len=%s", request.method, request.path,
+                        request.query_string.decode(), request.headers.get("Content-Type"), request.content_length)
+        if request.headers.get("Content-Type", "").startswith("application/json"):
+            app.logger.info("REQ body(first 200)=%r", body_preview)
+
     # --- Initialize Extensions ---
     db.init_app(app)
 
     # --- Import and Register Blueprints ---
     from routes.main import main_bp
-    from routes.structure import structure_bp
-    from routes.subjects import subjects_bp
-    from routes.staff import staff_bp
+    from routes.structure import structure_bp, structure_api_bp
+    from routes.subjects import subjects_bp, subjects_api_bp
+    from routes.staff import staff_bp, staff_api_bp
     from routes.classrooms import classrooms_bp
-    from routes.sections import sections_bp
+    from routes.sections import sections_bp, sections_api_bp
     from routes.timetable import timetable_bp
     from routes.analytics import analytics_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(structure_bp)
+    app.register_blueprint(structure_api_bp)
     app.register_blueprint(subjects_bp)
+    app.register_blueprint(subjects_api_bp)
     app.register_blueprint(staff_bp)
+    app.register_blueprint(staff_api_bp)
     app.register_blueprint(classrooms_bp)
     app.register_blueprint(sections_bp)
+    app.register_blueprint(sections_api_bp)
     app.register_blueprint(timetable_bp)
     app.register_blueprint(analytics_bp)
 

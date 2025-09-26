@@ -9,6 +9,8 @@ from models import User, Student, StudentSection
 from utils import hash_password, generate_random_password, log_activity
 
 sections_bp = Blueprint('sections', __name__)
+# API-prefixed blueprint to serve endpoints under /api/sections and /api/students
+sections_api_bp = Blueprint('sections_api', __name__, url_prefix='/api')
 
 @sections_bp.route('/sections')
 def manage_sections():
@@ -18,6 +20,8 @@ def manage_sections():
 
 @sections_bp.route('/api/sections', methods=['GET', 'POST'])
 @sections_bp.route('/api/sections/<int:section_id>', methods=['PUT', 'DELETE'])
+@sections_api_bp.route('/sections', methods=['GET', 'POST'])
+@sections_api_bp.route('/sections/<int:section_id>', methods=['PUT', 'DELETE'])
 def handle_sections(section_id=None):
     if 'user_id' not in session:
         return jsonify({"message": "Unauthorized"}), 401
@@ -76,6 +80,8 @@ def handle_sections(section_id=None):
 
 @sections_bp.route('/api/students', methods=['POST'])
 @sections_bp.route('/api/students/<int:student_id>', methods=['PUT', 'DELETE'])
+@sections_api_bp.route('/students', methods=['POST'])
+@sections_api_bp.route('/students/<int:student_id>', methods=['PUT', 'DELETE'])
 def handle_students(student_id=None):
     if 'user_id' not in session: return jsonify({"message": "Unauthorized"}), 401
 
@@ -130,6 +136,7 @@ def handle_students(student_id=None):
         return jsonify({"message": f"An unexpected error occurred: {e}"}), 500
 
 @sections_bp.route('/api/students/bulk_upload', methods=['POST'])
+@sections_api_bp.route('/students/bulk_upload', methods=['POST'])
 def bulk_upload_students():
     if 'user_id' not in session: return jsonify({"message": "Unauthorized"}), 401
     if 'file' not in request.files: return jsonify({"message": "No file part"}), 400

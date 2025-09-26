@@ -5,6 +5,8 @@ from models import SchoolGroup, Grade, Stream, Semester, Department
 from utils import log_activity
 
 structure_bp = Blueprint('structure', __name__, url_prefix='/structure')
+# API-prefixed blueprint to serve endpoints under /api/structure
+structure_api_bp = Blueprint('structure_api', __name__, url_prefix='/api/structure')
 
 @structure_bp.route('/')
 def manage_structure():
@@ -13,6 +15,7 @@ def manage_structure():
     return render_template('structure.html')
 
 @structure_bp.route('/api/<mode>', methods=['GET'])
+@structure_api_bp.route('/<mode>', methods=['GET'])
 def get_structure_items(mode):
     if 'user_id' not in session:
         return jsonify({"message": "Unauthorized"}), 401
@@ -37,6 +40,8 @@ def get_structure_items(mode):
 
 @structure_bp.route('/api/school', methods=['POST'])
 @structure_bp.route('/api/school/<int:item_id>', methods=['PUT', 'DELETE'])
+@structure_api_bp.route('/school', methods=['POST'])
+@structure_api_bp.route('/school/<int:item_id>', methods=['PUT', 'DELETE'])
 def handle_school_structure(item_id=None):
     if 'user_id' not in session:
         return jsonify({"message": "Unauthorized"}), 401
@@ -99,6 +104,8 @@ def handle_school_structure(item_id=None):
 
 @structure_bp.route('/api/college', methods=['POST'])
 @structure_bp.route('/api/college/<int:item_id>', methods=['PUT', 'DELETE'])
+@structure_api_bp.route('/college', methods=['POST'])
+@structure_api_bp.route('/college/<int:item_id>', methods=['PUT', 'DELETE'])
 def handle_college_structure(item_id=None):
     if 'user_id' not in session:
         return jsonify({"message": "Unauthorized"}), 401
